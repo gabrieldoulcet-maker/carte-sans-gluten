@@ -4,7 +4,7 @@ Carte interactive des établissements sans gluten (niveaux A à D), publiée ave
 
 - `index.html` + `etablissements.json` : la carte (MapLibre GL + fond OpenFreeMap / © OpenStreetMap contributors).
 - `data/a_geocoder.csv` : adresses à géocoder · `data/geocode.csv` : résultats (créé par l'action).
-- `.github/workflows/geocode.yml` : géocode ~3 000 adresses toutes les 6 h via Nominatim (1 req/s), place les lieux sur la carte et enregistre. S'arrête tout seul quand tout est fait (~1 à 2 jours pour ~17 000 adresses).
+- `.github/workflows/geocode.yml` : géocode via Nominatim (1 req/s, ~2 700 adresses/h, soit ~15 000 par lot de 5 h 30) toutes les 6 h, place les lieux sur la carte et enregistre. Les villes déjà trouvées ne sont pas redemandées. S'arrête tout seul quand tout est fait.
 
 ## Mise en route (une fois)
 1. Settings → Pages → Source : « Deploy from a branch », branche `main`, dossier `/ (root)`.

@@ -28,7 +28,7 @@ jobs:
       - name: Géocoder (Nominatim, 1 req/s)
         if: steps.check.outputs.left != '0'
         env: { CONTACT: "github.com/${{ github.repository }}" }
-        run: python scripts/geocode.py
+        run: python -u scripts/geocode.py
       - name: Placer les lieux sur la carte
         if: steps.check.outputs.left != '0'
         run: python scripts/apply_geocode.py
@@ -38,4 +38,5 @@ jobs:
           git config user.name "carte-bot"; git config user.email "carte-bot@users.noreply.github.com"
           git add data/geocode.csv etablissements.json
           git commit -m "Géocodage : lot du $(date -u +%F\ %H:%M)" || echo "rien à enregistrer"
+          git pull --rebase -X theirs origin main   # si main a bougé pendant le lot, ne pas perdre le travail
           git push
