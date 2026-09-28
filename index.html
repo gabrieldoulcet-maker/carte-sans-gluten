@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0F6B5C">
+<title>Carte Sans Gluten</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Figtree:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+<style>
+:root{
+  --ground:#F4F6F2; --panel:#FFFFFF; --ink:#18221E; --ink-2:#4E5B55; --line:#DCE3DE; --accent:#0F6B5C; --accent-ink:#FFFFFF;
+  --lvA:#12804E; --lvB:#2458C6; --lvC:#B97512; --lvD:#6F7786; --warn-bg:#FFF4DC; --warn-ink:#7A4B00;
+  --shadow:0 6px 24px rgba(20,40,32,.16); --radius:14px;
+  --font:"Figtree",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; --display:"Bricolage Grotesque","Figtree",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --ground:#101614; --panel:#18201D; --ink:#E8EEEA; --ink-2:#A3B1AA; --line:#2B3632; --accent:#3FB59C; --accent-ink:#0B1411;
+  --lvA:#3CC47F; --lvB:#6F97F2; --lvC:#E3A445; --lvD:#9AA2B0; --warn-bg:#3A2D12; --warn-ink:#F3CC7A; --shadow:0 6px 24px rgba(0,0,0,.45); color-scheme:dark;}}
+:root[data-theme="dark"]{
+  --ground:#101614; --panel:#18201D; --ink:#E8EEEA; --ink-2:#A3B1AA; --line:#2B3632; --accent:#3FB59C; --accent-ink:#0B1411;
+  --lvA:#3CC47F; --lvB:#6F97F2; --lvC:#E3A445; --lvD:#9AA2B0; --warn-bg:#3A2D12; --warn-ink:#F3CC7A; --shadow:0 6px 24px rgba(0,0,0,.45); color-scheme:dark;}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--ground);color:var(--ink);font:15px/1.45 var(--font);overflow:hidden;-webkit-tap-highlight-color:transparent}
+#map{position:fixed;inset:0}
+button{font:inherit;color:inherit}
+[hidden]{display:none!important}
+
+/* barre du haut */
+.top{position:fixed;left:0;right:0;top:0;padding:calc(env(safe-area-inset-top,0px) + 10px) 12px 0;display:flex;flex-direction:column;gap:8px;z-index:5;pointer-events:none}
+.top > *{pointer-events:auto}
+.search{display:flex;align-items:center;gap:8px;background:var(--panel);border-radius:999px;box-shadow:var(--shadow);padding:0 6px 0 16px;height:48px}
+.search input{flex:1;border:0;background:transparent;color:var(--ink);font:500 16px var(--font);outline:none;min-width:0}
+.search input::placeholder{color:var(--ink-2)}
+.brand{font:700 15px var(--display);color:var(--accent);white-space:nowrap}
+.iconbtn{width:38px;height:38px;border-radius:50%;border:0;background:transparent;display:grid;place-items:center;cursor:pointer;color:var(--ink-2)}
+.iconbtn:focus-visible,.chip:focus-visible,.row:focus-visible,.fab:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.chips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 12px;border-radius:999px;border:1px solid var(--line);background:var(--panel);font:600 13px var(--font);cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.chip .dot{width:10px;height:10px;border-radius:50%}
+.chip[aria-pressed="false"]{opacity:.55}
+.chip.tog[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.count{align-self:flex-start;background:var(--panel);border-radius:999px;padding:4px 12px;font:500 12px var(--font);color:var(--ink-2);box-shadow:0 1px 3px rgba(0,0,0,.1);font-variant-numeric:tabular-nums}
+
+/* boutons flottants */
+.fabs{position:fixed;right:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 28px);display:flex;flex-direction:column;gap:10px;z-index:4}
+.fab{width:48px;height:48px;border-radius:50%;border:0;background:var(--panel);box-shadow:var(--shadow);display:grid;place-items:center;cursor:pointer;color:var(--ink)}
+
+/* feuille du bas */
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--panel);border-radius:20px 20px 0 0;box-shadow:0 -8px 30px rgba(0,0,0,.18);max-height:72%;display:flex;flex-direction:column;padding-bottom:env(safe-area-inset-bottom,0px);transform:translateY(0);transition:transform .22s ease}
+@media (min-width:760px){.sheet{left:12px;right:auto;width:400px;bottom:12px;border-radius:20px;max-height:calc(100% - 140px)}}
+@media (prefers-reduced-motion:reduce){.sheet{transition:none}}
+.grab{width:40px;height:4px;border-radius:2px;background:var(--line);margin:8px auto 2px}
+.sheet-head{display:flex;align-items:flex-start;gap:10px;padding:6px 16px 10px}
+.sheet-head h2{flex:1;margin:0;font:700 20px/1.2 var(--display);text-wrap:balance}
+.sheet-sub{margin:2px 0 0;color:var(--ink-2);font-size:13px}
+.sheet-body{overflow-y:auto;padding:0 16px 16px;display:flex;flex-direction:column;gap:12px}
+.badge{display:inline-flex;align-items:center;gap:8px;font:600 13px var(--font);padding:6px 10px 6px 6px;border-radius:10px;background:color-mix(in srgb,var(--lv) 12%,transparent);color:var(--ink)}
+.badge b{display:grid;place-items:center;width:24px;height:24px;border-radius:7px;background:var(--lv);color:#fff;font:700 13px var(--display)}
+.tags{display:flex;flex-wrap:wrap;gap:6px}
+.tag{font:600 12px var(--font);padding:4px 9px;border-radius:999px;border:1px solid var(--line);color:var(--ink-2)}
+.tag.on{border-color:var(--accent);color:var(--accent)}
+.warn{background:var(--warn-bg);color:var(--warn-ink);border-radius:10px;padding:8px 10px;font-size:13px}
+.kv{display:grid;grid-template-columns:22px 1fr;gap:6px 10px;align-items:start}
+.kv svg{margin-top:2px;color:var(--ink-2)}
+.kv .v{user-select:text;word-break:break-word}
+.kv a{color:var(--accent);font-weight:600;text-decoration:none}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:6px;height:40px;padding:0 14px;border-radius:12px;border:1px solid var(--line);background:var(--panel);font:600 14px var(--font);color:var(--ink);text-decoration:none;cursor:pointer}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.fine{font-size:12px;color:var(--ink-2)}
+.fine a{color:var(--ink-2)}
+.list{display:flex;flex-direction:column}
+.row{display:grid;grid-template-columns:28px 1fr;gap:10px;align-items:center;padding:10px 4px;border:0;border-bottom:1px solid var(--line);background:transparent;text-align:left;cursor:pointer;width:100%}
+.row:last-child{border-bottom:0}
+.row .lv{display:grid;place-items:center;width:26px;height:26px;border-radius:8px;background:var(--lv);color:#fff;font:700 13px var(--display)}
+.row .nm{font-weight:600;display:block}
+.row .mt{font-size:12.5px;color:var(--ink-2);display:block}
+.legend{display:grid;grid-template-columns:28px 1fr;gap:8px 10px;align-items:start}
+.legend .lv{display:grid;place-items:center;width:26px;height:26px;border-radius:8px;background:var(--lv);color:#fff;font:700 13px var(--display)}
+.legend p{margin:0}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 90px);background:var(--ink);color:var(--ground);padding:8px 14px;border-radius:10px;font-size:13px;z-index:9}
+.maplibregl-ctrl-attrib{font-size:10px}
+.maplibregl-ctrl-bottom-left,.maplibregl-ctrl-bottom-right{margin-bottom:env(safe-area-inset-bottom,0px)}
+</style>
+</head>
+<body>
+<div id="map" role="application" aria-label="Carte des établissements sans gluten"></div>
+
+<div class="top">
+  <div class="search">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+    <input id="q" type="search" placeholder="Restaurant ou ville" autocomplete="off" aria-label="Rechercher un restaurant ou une ville">
+    <button class="iconbtn" id="infoBtn" aria-label="Comprendre les niveaux">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.01"/></svg>
+    </button>
+  </div>
+  <div class="chips" id="chips" role="group" aria-label="Filtres"></div>
+  <div class="count" id="count">Chargement…</div>
+</div>
+
+<div class="fabs">
+  <button class="fab" id="locBtn" aria-label="Me localiser">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="7.5"/></svg>
+  </button>
+</div>
+
+<section class="sheet" id="sheet" hidden aria-live="polite">
+  <div class="grab"></div>
+  <div class="sheet-head">
+    <div style="flex:1;min-width:0"><h2 id="sheetTitle"></h2><p class="sheet-sub" id="sheetSub"></p></div>
+    <button class="iconbtn" id="backBtn" aria-label="Retour à la liste" hidden>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <button class="iconbtn" id="closeBtn" aria-label="Fermer">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+    </button>
+  </div>
+  <div class="sheet-body" id="sheetBody"></div>
+</section>
+<div class="toast" id="toast" hidden></div>
+
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script>
+(async function(){
+const STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
+const LV = {A:{c:"--lvA",t:"100 % sans gluten",d:"Tout est sans gluten, confirmé sur le site officiel ou par une association."},
+            B:{c:"--lvB",t:"Certifié par une association",d:"Programme d'une association cœliaque : formation, audit ou certification (Coeliac UK, AIC, FACE, SMAP…)."},
+            C:{c:"--lvC",t:"Cuisine dédiée ou recommandé",d:"Cuisine, four ou zone dédiés déclarés, ou recommandé par une association sans audit."},
+            D:{c:"--lvD",t:"Signalé par la communauté",d:"Blogs, annuaires, presse, offices de tourisme. Friteuse dédiée seule. À confirmer sur place."}};
+const TYPES = {"Restaurant":"Restaurant","Boulangerie / Pâtisserie":"Boulangerie","Café / Tea-room":"Café","Hôtel":"Hôtel","Glacier":"Glacier","Take-away / Fast-food":"À emporter","Bar / Pub":"Bar","Pizzeria":"Pizzeria","Cantine / Collectivité":"Cantine"};
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const norm = s => String(s||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase();
+const fmt = n => n.toLocaleString("fr-FR");
+const lieux = n => `${fmt(n)} ${n>1?"lieux":"lieu"}`;
+const ICON = {
+  pin:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>',
+  tel:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/></svg>',
+  web:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>',
+  cert:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="9" r="6"/><path d="m8.5 14-1.5 7 5-3 5 3-1.5-7"/></svg>'};
+
+// ---------- données
+let DATA = window.__DATA;
+if(!DATA){ try{ DATA = await (await fetch("etablissements.json")).json(); }catch(e){ $("count").textContent = "Impossible de charger les données (etablissements.json)."; return; } }
+const E = DATA.e, CITIES = DATA.cities;
+E.forEach((e,i)=>{ e.i=i; e._s = norm(e.n+" "+(e.v||"")); });
+let currentList = null;
+const state = {lv:{A:true,B:true,C:true,D:true}, f100:false, fcui:false, ffri:false, verified:false};
+const keep = e => state.lv[e.l] && (!state.f100 || (e.f&1)) && (!state.fcui || (e.f&2)) && (!state.ffri || (e.f&4)) && (!state.verified || !e.s);
+
+// ---------- filtres
+const chips = $("chips");
+const mk = (html, pressed, on, cls="") => { const b=document.createElement("button"); b.className="chip "+cls; b.innerHTML=html; b.setAttribute("aria-pressed", pressed); b.onclick=()=>{ const v=on(); b.setAttribute("aria-pressed", v); refresh(); }; chips.appendChild(b); };
+for(const k of "ABCD") mk(`<span class="dot" style="background:var(${LV[k].c})"></span>${k}`, true, ()=> (state.lv[k]=!state.lv[k]));
+mk("100 % sans gluten", false, ()=> (state.f100=!state.f100), "tog");
+mk("Cuisine dédiée", false, ()=> (state.fcui=!state.fcui), "tog");
+mk("Friteuse dédiée", false, ()=> (state.ffri=!state.ffri), "tog");
+mk("Vérifiés seulement", false, ()=> (state.verified=!state.verified), "tog");
+
+// ---------- carte
+async function loadStyle(){
+  try{
+    const ctl = new AbortController(); const t = setTimeout(()=>ctl.abort(), 7000);
+    const r = await fetch(STYLE_URL, {signal:ctl.signal}); clearTimeout(t);
+    if(r.ok) return await r.json();
+  }catch(e){}
+  showToast("Fond de carte indisponible hors connexion — les lieux restent affichés.");
+  return {version:8, sources:{}, layers:[{id:"bg",type:"background",paint:{"background-color":css("--ground")}}]};
+}
+const style = await loadStyle();
+const hasGlyphs = !!style.glyphs;
+const map = new maplibregl.Map({container:"map", style, center:[8,44], zoom: innerWidth < 700 ? 2.6 : 3.6, attributionControl:{compact:true}, maxPitch:0});
+map.touchZoomRotate.disableRotation(); map.dragRotate.disable();
+await new Promise(res => map.loaded() ? res() : map.once("load", res));
+
+const pointsFC = () => ({type:"FeatureCollection", features: E.filter(e => e.y!=null && keep(e)).map(e => ({type:"Feature", id:e.i, properties:{i:e.i, l:e.l}, geometry:{type:"Point", coordinates:[e.x,e.y]}}))});
+const citiesFC = () => ({type:"FeatureCollection", features: CITIES.map((c,ci) => { const n = c.ids.reduce((a,i)=>a+(keep(E[i])?1:0),0); return n ? {type:"Feature", properties:{ci, n, best: c.ids.find(i=>keep(E[i])) ?? -1}, geometry:{type:"Point", coordinates:[c.x,c.y]}} : null; }).filter(Boolean)});
+const bestLevel = ci => { for(const i of CITIES[ci].ids) if(keep(E[i])) return E[i].l; return "D"; };
+
+map.addSource("cities", {type:"geojson", data: citiesFC(), cluster:true, clusterRadius:40, clusterMaxZoom:9, clusterProperties:{n:["+",["get","n"]]}});
+map.addSource("pts", {type:"geojson", data: pointsFC(), cluster:true, clusterRadius:44, clusterMaxZoom:14});
+const lvColor = ["match",["get","l"],"A",css("--lvA"),"B",css("--lvB"),"C",css("--lvC"),css("--lvD")];
+// villes (positions à préciser) : bulles avec le nombre de lieux
+map.addLayer({id:"city-cluster", type:"circle", source:"cities", filter:["has","point_count"], paint:{
+  "circle-color": css("--panel"), "circle-stroke-color": css("--accent"), "circle-stroke-width": 2.5,
+  "circle-radius": ["interpolate",["linear"],["get","n"], 1, 11, 50, 16, 500, 23, 5000, 32]}});
+if(hasGlyphs) map.addLayer({id:"city-cluster-count", type:"symbol", source:"cities", filter:["has","point_count"], layout:{"text-field":["to-string",["get","n"]], "text-size":12, "text-font":["Noto Sans Bold"], "text-allow-overlap":true}, paint:{"text-color": css("--accent")}});
+map.addLayer({id:"city-bubble", type:"circle", source:"cities", filter:["!",["has","point_count"]], paint:{
+  "circle-color": css("--panel"), "circle-stroke-color": css("--accent"), "circle-stroke-width": 2,
+  "circle-radius": ["interpolate",["linear"],["get","n"], 1, 9, 10, 13, 100, 19, 1000, 26]}});
+if(hasGlyphs) map.addLayer({id:"city-count", type:"symbol", source:"cities", filter:["!",["has","point_count"]], layout:{"text-field":["to-string",["get","n"]], "text-size":11, "text-font":["Noto Sans Bold"], "text-allow-overlap":true}, paint:{"text-color": css("--accent")}});
+// lieux positionnés précisément
+map.addLayer({id:"clusters", type:"circle", source:"pts", filter:["has","point_count"], paint:{"circle-color":css("--accent"),"circle-radius":["step",["get","point_count"],14,20,18,100,24],"circle-stroke-width":3,"circle-stroke-color":"#fff"}});
+if(hasGlyphs) map.addLayer({id:"cluster-count", type:"symbol", source:"pts", filter:["has","point_count"], layout:{"text-field":["get","point_count_abbreviated"],"text-size":12,"text-font":["Noto Sans Bold"]}, paint:{"text-color":"#fff"}});
+map.addLayer({id:"pt", type:"circle", source:"pts", filter:["!",["has","point_count"]], paint:{"circle-color":lvColor,"circle-radius":["interpolate",["linear"],["zoom"],4,6,14,10],"circle-stroke-width":2.5,"circle-stroke-color":"#fff"}});
+if(hasGlyphs) map.addLayer({id:"pt-letter", type:"symbol", source:"pts", filter:["!",["has","point_count"]], minzoom:9, layout:{"text-field":["get","l"],"text-size":10,"text-font":["Noto Sans Bold"],"text-allow-overlap":true}, paint:{"text-color":"#fff"}});
+
+function refresh(){
+  map.getSource("pts").setData(pointsFC());
+  map.getSource("cities").setData(citiesFC());
+  const shown = E.filter(keep); const precise = shown.filter(e=>e.y!=null).length;
+  $("count").textContent = `${lieux(shown.length)} · ${fmt(precise)} ${precise>1?"placés":"placé"} à l'adresse`;
+  if(currentList) currentList.render();
+}
+refresh();
+
+for(const id of ["city-bubble","city-cluster","clusters","pt"]){ map.on("mouseenter",id,()=>map.getCanvas().style.cursor="pointer"); map.on("mouseleave",id,()=>map.getCanvas().style.cursor=""); }
+map.on("click","clusters", async ev => { const f = ev.features[0]; const z = await map.getSource("pts").getClusterExpansionZoom(f.properties.cluster_id); map.easeTo({center:f.geometry.coordinates, zoom:z}); });
+map.on("click","city-cluster", async ev => { const f = ev.features[0]; const z = await map.getSource("cities").getClusterExpansionZoom(f.properties.cluster_id); map.easeTo({center:f.geometry.coordinates, zoom:Math.min(z,10)}); });
+map.on("click","pt", ev => openDetail(E[ev.features[0].properties.i]));
+map.on("click","city-bubble", ev => { const ci = ev.features[0].properties.ci; openCity(ci); });
+
+// ---------- feuille
+const sheet=$("sheet"), body=$("sheetBody");
+function openSheet(title, sub, html, back=false){ $("sheetTitle").textContent=title; $("sheetSub").textContent=sub||""; body.innerHTML=html; $("backBtn").hidden=!back; sheet.hidden=false; body.scrollTop=0; }
+$("closeBtn").onclick = ()=>{ sheet.hidden=true; currentList=null; };
+$("backBtn").onclick = ()=>{ if(currentList) currentList.render(); };
+
+function rowHTML(e){ return `<button class="row" data-i="${e.i}" style="--lv:var(${LV[e.l].c})"><span class="lv">${e.l}</span><span><span class="nm">${esc(e.n)}</span><span class="mt">${esc([TYPES[e.t]||e.t, e.a||e.v].filter(Boolean).join(" · "))}${e.s?" · à confirmer":""}</span></span></button>`; }
+function bindRows(){ body.querySelectorAll(".row[data-i]").forEach(b => b.onclick = () => { const e=E[+b.dataset.i]; openDetail(e, true); if(e.y!=null) map.flyTo({center:[e.x,e.y], zoom:Math.max(map.getZoom(),15)}); }); }
+function openCity(ci){
+  const c = CITIES[ci];
+  currentList = {render(){ const items = c.ids.map(i=>E[i]).filter(keep);
+    openSheet(`${c.name}`, `${lieux(items.length)} · position précise en cours de calcul, adresses ci-dessous`, `<div class="list">${items.slice(0,400).map(rowHTML).join("")}</div>`);
+    bindRows(); }};
+  currentList.render();
+  map.easeTo({center:[c.x,c.y], zoom:Math.max(map.getZoom(), 11)});
+}
+function openDetail(e, fromList=false){
+  const lv = LV[e.l];
+  const addr = [e.a, [e.z, e.v].filter(Boolean).join(" ")].filter(Boolean).join(", ");
+  const q = encodeURIComponent([e.n, addr || e.v, e.c].filter(Boolean).join(", "));
+  const site = e.w ? (e.w.startsWith("http") ? e.w : "https://"+e.w) : "";
+  const html = `
+    <span class="badge" style="--lv:var(${lv.c})"><b>${e.l}</b>${lv.t}</span>
+    <div class="tags">${TYPES[e.t]||e.t ? `<span class="tag">${esc(TYPES[e.t]||e.t)}</span>`:""}
+      <span class="tag ${e.f&1?"on":""}">100 % SG ${e.f&1?"oui":"—"}</span>
+      <span class="tag ${e.f&2?"on":""}">Cuisine dédiée ${e.f&2?"oui":"—"}</span>
+      <span class="tag ${e.f&4?"on":""}">Friteuse dédiée ${e.f&4?"oui":"—"}</span></div>
+    ${e.s ? `<div class="warn">Informations à confirmer : cette adresse vient d'une source communautaire ou n'a pas encore été vérifiée sur le site officiel. Appelez avant de venir.</div>`:""}
+    <div class="kv">
+      ${ICON.pin}<div class="v">${addr ? esc(addr) : "Adresse non connue"}${e.y==null ? `<div class="fine">Position sur la carte : centre de la ville en attendant le géocodage.</div>`:""}</div>
+      ${e.ph ? `${ICON.tel}<div class="v"><a href="tel:${esc(e.ph.replace(/[^+\d]/g,""))}">${esc(e.ph)}</a></div>`:""}
+      ${site ? `${ICON.web}<div class="v"><a href="${esc(site)}" target="_blank" rel="noopener">${esc(e.w.replace(/^https?:\/\/(www\.)?/,"").replace(/\/$/,""))}</a></div>`:""}
+      ${e.ce ? `${ICON.cert}<div class="v">${esc(e.ce)}</div>`:""}
+    </div>
+    <div class="actions">
+      <a class="btn primary" href="https://www.google.com/maps/search/?api=1&query=${q}" target="_blank" rel="noopener">Itinéraire</a>
+      ${addr ? `<button class="btn" id="copyBtn">Copier l'adresse</button>`:""}
+    </div>
+    <p class="fine">${esc(lv.d)} Source : <a href="${esc(e.p)}" target="_blank" rel="noopener">${esc((e.p||"").replace(/^https?:\/\/(www\.)?/,"").split("/")[0])}</a>. En cas de doute, demandez toujours sur place.</p>`;
+  openSheet(e.n, [e.v, e.c].filter(Boolean).join(", "), html, fromList && !!currentList);
+  const cb = $("copyBtn"); if(cb) cb.onclick = async ()=>{ try{ await navigator.clipboard.writeText(addr); showToast("Adresse copiée"); }catch(_){ showToast(addr); } };
+  if(!fromList) currentList = null;
+}
+
+// ---------- recherche
+let tmr; $("q").addEventListener("input", ev => { clearTimeout(tmr); tmr = setTimeout(()=>search(ev.target.value), 180); });
+function search(v){
+  const q = norm(v).trim();
+  if(q.length < 2){ if(currentList && currentList.search){ sheet.hidden=true; currentList=null; } return; }
+  const words = q.split(/\s+/);
+  currentList = {search:true, render(){
+    const hits = []; for(const e of E){ if(keep(e) && words.every(w=>e._s.includes(w))){ hits.push(e); if(hits.length>=150) break; } }
+    const cityHits = CITIES.map((c,ci)=>({c,ci})).filter(o=>norm(o.c.name).startsWith(q)).slice(0,5);
+    const cityRows = cityHits.map(o=>`<button class="row" data-ci="${o.ci}" style="--lv:var(--accent)"><span class="lv">${o.c.c}</span><span><span class="nm">${esc(o.c.name)}</span><span class="mt">Voir les ${fmt(o.c.ids.filter(i=>keep(E[i])).length)} lieux de la ville</span></span></button>`).join("");
+    openSheet(`Résultats`, hits.length ? `${hits.length>=150?"150+ lieux":lieux(hits.length)} pour « ${v} »` : `Aucun lieu pour « ${v} » avec les filtres actuels`, `<div class="list">${cityRows}${hits.map(rowHTML).join("")}</div>`);
+    body.querySelectorAll(".row[data-ci]").forEach(b => b.onclick = ()=> openCity(+b.dataset.ci));
+    bindRows(); }};
+  currentList.render();
+}
+
+// ---------- légende
+$("infoBtn").onclick = ()=>{
+  currentList=null;
+  openSheet("Les niveaux de confiance", `Base du ${DATA.date} · ${fmt(E.length)} lieux dans ${new Set(E.map(e=>e.c)).size} pays`,
+  `<div class="legend">${Object.entries(LV).map(([k,v])=>`<span class="lv" style="--lv:var(${v.c})">${k}</span><p><strong>${v.t}.</strong> ${v.d}</p>`).join("")}</div>
+   <p class="fine">Pastille pleine : lieu placé à son adresse. Bulle blanche avec un nombre : lieux d'une ville dont la position exacte est en cours de calcul (touchez pour voir la liste et les adresses). Chaque fiche renvoie à la page source lue. Rien n'est inventé ; ce qui n'est pas confirmé est marqué « à confirmer ».</p>`);
+};
+
+// ---------- localisation
+$("locBtn").onclick = ()=>{
+  if(!navigator.geolocation){ showToast("Localisation indisponible sur cet appareil."); return; }
+  navigator.geolocation.getCurrentPosition(p => {
+    const c=[p.coords.longitude,p.coords.latitude];
+    if(!map.getSource("me")){ map.addSource("me",{type:"geojson",data:{type:"Point",coordinates:c}}); map.addLayer({id:"me",type:"circle",source:"me",paint:{"circle-radius":8,"circle-color":"#1E88E5","circle-stroke-width":3,"circle-stroke-color":"#fff"}}); }
+    else map.getSource("me").setData({type:"Point",coordinates:c});
+    map.flyTo({center:c, zoom:13});
+  }, ()=> showToast("Autorisez la localisation pour voir les lieux autour de vous."), {enableHighAccuracy:true, timeout:10000});
+};
+function showToast(t){ const el=$("toast"); el.textContent=t; el.hidden=false; clearTimeout(showToast._t); showToast._t=setTimeout(()=>el.hidden=true, 3200); }
+})();
+</script>
+</body>
+</html>

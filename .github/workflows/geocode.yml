@@ -1,0 +1,41 @@
+name: Géocodage de la carte
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 */6 * * *"   # toutes les 6 h tant qu'il reste des adresses (s'arrête tout seul ensuite)
+permissions:
+  contents: write
+concurrency: geocode
+jobs:
+  geocode:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install pandas requests
+      - name: Reste-t-il des adresses ?
+        id: check
+        run: |
+          python - <<'PY'
+          import os, pandas as pd
+          s = pd.read_csv("data/a_geocoder.csv", dtype=str)
+          d = set(pd.read_csv("data/geocode.csv", dtype=str).cle) if os.path.exists("data/geocode.csv") else set()
+          left = int((~s.cle.isin(d)).sum()); print("restantes", left)
+          open(os.environ["GITHUB_OUTPUT"], "a").write(f"left={left}\n")
+          PY
+      - name: Géocoder (Nominatim, 1 req/s)
+        if: steps.check.outputs.left != '0'
+        env: { CONTACT: "github.com/${{ github.repository }}" }
+        run: python scripts/geocode.py
+      - name: Placer les lieux sur la carte
+        if: steps.check.outputs.left != '0'
+        run: python scripts/apply_geocode.py
+      - name: Enregistrer
+        if: steps.check.outputs.left != '0'
+        run: |
+          git config user.name "carte-bot"; git config user.email "carte-bot@users.noreply.github.com"
+          git add data/geocode.csv etablissements.json
+          git commit -m "Géocodage : lot du $(date -u +%F\ %H:%M)" || echo "rien à enregistrer"
+          git push
