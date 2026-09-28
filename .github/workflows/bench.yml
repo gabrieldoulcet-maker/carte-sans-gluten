@@ -1,0 +1,38 @@
+name: Test de vitesse du géocodage
+on:
+  workflow_dispatch:
+  push:
+    branches: [claude/lucid-cray-axlhlt]
+    paths: [scripts/geocode.py, scripts/bench_photon.py, .github/workflows/bench.yml]
+jobs:
+  bench:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install pandas requests
+      - name: Échantillon commun (400 adresses au hasard)
+        run: |
+          python -c "import pandas as pd; s=pd.read_csv('data/a_geocoder.csv',dtype=str); s.sample(400,random_state=1).to_csv('sample.csv',index=False)"
+          for d in ancien nouveau; do mkdir -p $d/data; cp sample.csv $d/data/a_geocoder.csv; done
+          git show 6f4f182:scripts/geocode.py > ancien/geocode.py
+          cp scripts/geocode.py nouveau/geocode.py
+      - name: Ancien script (4 min)
+        working-directory: ancien
+        env: { BUDGET: "240", CONTACT: "github.com/${{ github.repository }}" }
+        run: |
+          t=$(date +%s); python -u geocode.py; e=$(( $(date +%s) - t ))
+          n=$(( $(wc -l < data/geocode.csv) - 1 )); echo "ANCIEN : $n adresses en $e s → $(( n * 3600 / e )) adresses/h"
+      - name: Nouveau script (4 min)
+        working-directory: nouveau
+        env: { BUDGET: "240", CONTACT: "github.com/${{ github.repository }}" }
+        run: |
+          t=$(date +%s); python -u geocode.py; e=$(( $(date +%s) - t ))
+          n=$(( $(wc -l < data/geocode.csv) - 1 )); echo "NOUVEAU : $n adresses en $e s → $(( n * 3600 / e )) adresses/h"
+      - name: Précision obtenue
+        run: for d in ancien nouveau; do echo "$d"; python -c "import pandas as pd; print(pd.read_csv('$d/data/geocode.csv',dtype=str).precision.value_counts().to_string())"; done
+      - name: Photon (60 adresses)
+        run: cp sample.csv data/a_geocoder.csv && python -u scripts/bench_photon.py
