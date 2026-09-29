@@ -38,6 +38,12 @@ def mots(t):
 def base_nom(nom):
     return re.split(r"\s+[–—|-]\s+", nom)[0].strip()                     # « Domino's – Saltash » -> « Domino's »
 
+def chaines_de(noms):
+    """Noms présents 3 fois ou plus, et débuts de nom de 2 mots présents 5 fois ou plus (« pizza hut » dans « Pizza Hut Lincoln »)."""
+    n1 = noms.value_counts()
+    n2 = noms.map(lambda n: " ".join(n.split()[:2]) if len(n.split()) > 2 else "").value_counts()
+    return set(n1[n1 >= 3].index) | set(n2[(n2 >= 5) & (n2.index != "")].index)
+
 def valide(k, res, r, chaines):
     """Refuse les résultats douteux vus sur l'échantillon témoin (mauvaise succursale, homonyme, route mal lue)."""
     rank = int(res["place_rank"])
@@ -47,8 +53,10 @@ def valide(k, res, r, chaines):
         if res.get("category") not in POI or rank < 28: return False
         trouve, cherche = norm(res["display_name"].split(",")[0]), norm(base_nom(r.nom))
         if not trouve or not set(trouve.split()) <= set(cherche.split()) | set(norm(r.nom).split()): return False  # « Casita Andina » ≠ « Andina »
-        if norm(base_nom(r.nom)) in chaines:                              # chaîne : la succursale doit correspondre à l'adresse
-            indices = (mots(r.adresse) | mots(r.nom[len(base_nom(r.nom)):])) - mots(r.ville)  # la ville ne distingue pas les succursales
+        n = norm(base_nom(r.nom))
+        chaine = next((c for c in chaines if n == c or n.startswith(c + " ")), None)  # « Pizza Hut Warrington » -> chaîne « pizza hut »
+        if chaine:                                                        # chaîne : la succursale doit correspondre à l'adresse
+            indices = (mots(r.adresse) | mots(norm(r.nom)[len(chaine):])) - mots(r.ville)  # la ville ne distingue pas les succursales
             return bool(indices & mots(res["display_name"]))
     return True
 
@@ -66,9 +74,11 @@ def variantes(r):
             q += [("adr", f"{c}, {lieu}"), ("adr", f"{c}, {ville}")]
             ps = c.split(",")
             base = next((p for p in ps if re.search(r"\d", p) and re.search(r"[^\W\d_]{3}", p)), None)  # la partie avec le numéro est la rue
+            if base is None:                                              # « Plaza Catalunya, 21 » : numéro à part, la rue le précède
+                base = next((ps[i - 1] for i, p in enumerate(ps) if i and re.fullmatch(r"\s*\d+\w?\s*", p)), None)
             if base and not re.search(r"\b[A-Z]{1,3}\s?-?\s?\d", base):    # pas « Carretera CV 213 » / « AP-7 »
-                rue = NUMERO.sub(" ", base).strip(" ,-:")
-                if len(rue) >= 4: q.append(("rue", f"{rue}, {ville}"))
+                rue = NUMERO.sub(" ", re.sub(r"\(.*?\)", "", base)).strip(" ,-:")
+                if mots(rue): q.append(("rue", f"{rue}, {ville}"))
     nom = base_nom(r.nom)
     if nom and ville: q.append(("nom", f"{nom}, {ville}"))
     vus, out = set(), []
@@ -103,8 +113,8 @@ def a_faire():
 
 def main():
     todo = a_faire()
-    noms = pd.read_csv("data/a_geocoder.csv", dtype=str).fillna("").nom.map(lambda n: norm(base_nom(n))).value_counts()
-    chaines = set(noms[noms >= 3].index)
+    noms = pd.read_csv("data/a_geocoder.csv", dtype=str).fillna("").nom.map(lambda n: norm(base_nom(n)))
+    chaines = chaines_de(noms)
     if LIMIT: todo = todo.head(LIMIT)
     print(f"{len(todo)} lieux à affiner", flush=True)
     t0, gains, faits, stats = time.time(), {}, [], {}
