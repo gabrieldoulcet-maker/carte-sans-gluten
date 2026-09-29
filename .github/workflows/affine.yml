@@ -26,12 +26,12 @@ jobs:
         run: python -u scripts/affine.py
       - name: Placer les lieux sur la carte
         if: steps.check.outputs.left != '0'
-        run: python scripts/apply_geocode.py
+        run: python scripts/apply_geocode.py && python scripts/a_verifier.py
       - name: Enregistrer
         if: steps.check.outputs.left != '0'
         run: |
           git config user.name "carte-bot"; git config user.email "carte-bot@users.noreply.github.com"
-          git add data/geocode.csv data/affine_fait.csv etablissements.json
+          git add data/geocode.csv data/affine_fait.csv data/a_verifier.csv etablissements.json
           git commit -m "Affinage : lot du $(date -u +%F\ %H:%M)" || echo "rien à enregistrer"
           git pull --rebase -X theirs origin main
           git push

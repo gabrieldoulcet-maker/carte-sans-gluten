@@ -6,6 +6,7 @@ Carte interactive des établissements sans gluten (niveaux A à D), publiée ave
 - `data/a_geocoder.csv` : adresses à géocoder · `data/geocode.csv` : résultats (créé par l'action).
 - `.github/workflows/geocode.yml` : géocode via Nominatim (1 req/s, ~2 700 adresses/h, soit ~15 000 par lot de 5 h 30) toutes les 6 h, place les lieux sur la carte et enregistre. Les villes déjà trouvées ne sont pas redemandées. S'arrête tout seul quand tout est fait.
 - `.github/workflows/affine.yml` : second passage sur les lieux trouvés seulement à la ville (adresse nettoyée, sans code postal, rue sans numéro, nom du commerce) pour les placer à la rue. Suivi dans `data/affine_fait.csv`.
+- Corrections manuelles : `data/a_verifier.csv` liste les lieux encore placés à la ville ; chaque contributeur dépose `data/corrections/<son-nom>.csv` (modèle : `data/corrections/_modele.csv`). Le workflow `corrections.yml` les intègre à chaque dépôt et met la carte et la liste à jour.
 
 ## Mise en route (une fois)
 1. Settings → Pages → Source : « Deploy from a branch », branche `main`, dossier `/ (root)`.

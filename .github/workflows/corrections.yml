@@ -1,0 +1,30 @@
+name: Intégration des corrections
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [data/corrections/**]
+permissions:
+  contents: write
+concurrency: geocode
+jobs:
+  corrections:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install pandas requests
+      - name: Intégrer les corrections (Nominatim, 1 req/s)
+        env: { CONTACT: "github.com/${{ github.repository }}" }
+        run: python -u scripts/corrections.py
+      - name: Placer les lieux sur la carte et mettre à jour la liste
+        run: python scripts/apply_geocode.py && python scripts/a_verifier.py
+      - name: Enregistrer
+        run: |
+          git config user.name "carte-bot"; git config user.email "carte-bot@users.noreply.github.com"
+          git add data/geocode.csv data/corrections_faites.csv data/a_verifier.csv etablissements.json
+          git commit -m "Corrections : lot du $(date -u +%F\ %H:%M)" || echo "rien à enregistrer"
+          git pull --rebase -X theirs origin main
+          git push
