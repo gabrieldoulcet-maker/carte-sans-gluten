@@ -2,7 +2,7 @@ name: Échantillon témoin de l'affinage
 on:
   push:
     branches: [claude/lucid-cray-axlhlt]
-    paths: [.github/workflows/bench.yml]
+    paths: [.github/workflows/bench.yml, scripts/affine.py]
 jobs:
   bench:
     runs-on: ubuntu-latest

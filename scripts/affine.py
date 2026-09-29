@@ -1,7 +1,7 @@
 """Second passage : ré-essaie les lieux trouvés seulement à la ville/région (ou introuvables) avec des variantes
 de requête (adresse nettoyée, sans code postal, rue sans numéro, nom du lieu) pour les placer à la rue ou à l'adresse.
 Met à jour data/geocode.csv ; les clés déjà ré-essayées sont notées dans data/affine_fait.csv (reprise possible)."""
-import os, re, time, csv, requests, pandas as pd
+import os, re, time, csv, unicodedata, requests, pandas as pd
 BUDGET = int(os.environ.get("BUDGET", 5 * 3600 + 30 * 60))
 LIMIT = int(os.environ.get("LIMIT", 0))
 INTERVAL = float(os.environ.get("INTERVAL", 1.0))
@@ -30,6 +30,28 @@ def nettoie(adr, ville, cp):
         parts.append(p)
     return ", ".join(parts[:2])
 
+GENERIQUES = set("road street lane avenue unit units shop centre center retail park shopping mall high the and calle plaza carrer avenida paseo via rue place square drive suite local market".split())
+def norm(t):
+    return re.sub(r"[^a-z0-9]+", " ", unicodedata.normalize("NFKD", str(t)).encode("ascii", "ignore").decode().lower()).strip()
+def mots(t):
+    return {w for w in norm(t).split() if len(w) >= 4 and w not in GENERIQUES}
+def base_nom(nom):
+    return re.split(r"\s+[–—|-]\s+", nom)[0].strip()                     # « Domino's – Saltash » -> « Domino's »
+
+def valide(k, res, r, chaines):
+    """Refuse les résultats douteux vus sur l'échantillon témoin (mauvaise succursale, homonyme, route mal lue)."""
+    rank = int(res["place_rank"])
+    if rank < 26: return False
+    if k == "rue": return res.get("category") == "highway"               # la variante « rue » doit tomber sur une rue
+    if k == "nom":
+        if res.get("category") not in POI or rank < 28: return False
+        trouve, cherche = norm(res["display_name"].split(",")[0]), norm(base_nom(r.nom))
+        if not trouve or not set(trouve.split()) <= set(cherche.split()) | set(norm(r.nom).split()): return False  # « Casita Andina » ≠ « Andina »
+        if norm(base_nom(r.nom)) in chaines:                              # chaîne : la succursale doit correspondre à l'adresse
+            indices = (mots(r.adresse) | mots(r.nom[len(base_nom(r.nom)):])) - mots(r.ville)  # la ville ne distingue pas les succursales
+            return bool(indices & mots(res["display_name"]))
+    return True
+
 def variantes(r):
     cp = r.code_postal
     if r.pays == "ES" and re.fullmatch(r"\d{4}", cp): cp = "0" + cp
@@ -38,13 +60,16 @@ def variantes(r):
     q = []
     if r.adresse:
         c = nettoie(r.adresse, ville, cp)
-        if c:
+        if c and not ville:                                               # sans ville, « High Street » tomberait n'importe où
+            if cp: q.append(("adr", f"{c}, {cp}"))
+        elif c:
             q += [("adr", f"{c}, {lieu}"), ("adr", f"{c}, {ville}")]
             ps = c.split(",")
-            base = next((p for p in ps if re.search(r"\d", p) and re.search(r"[^\W\d_]{3}", p)), ps[0])       # la partie avec le numéro est la rue
-            rue = NUMERO.sub(" ", base).strip(" ,-:")
-            if len(rue) >= 4: q.append(("rue", f"{rue}, {ville}"))
-    nom = re.split(r"\s+[–—|-]\s+", r.nom)[0].strip()                     # « Domino's – Saltash » -> « Domino's »
+            base = next((p for p in ps if re.search(r"\d", p) and re.search(r"[^\W\d_]{3}", p)), None)  # la partie avec le numéro est la rue
+            if base and not re.search(r"\b[A-Z]{1,3}\s?-?\s?\d", base):    # pas « Carretera CV 213 » / « AP-7 »
+                rue = NUMERO.sub(" ", base).strip(" ,-:")
+                if len(rue) >= 4: q.append(("rue", f"{rue}, {ville}"))
+    nom = base_nom(r.nom)
     if nom and ville: q.append(("nom", f"{nom}, {ville}"))
     vus, out = set(), []
     for k, s in q:
@@ -78,6 +103,8 @@ def a_faire():
 
 def main():
     todo = a_faire()
+    noms = pd.read_csv("data/a_geocoder.csv", dtype=str).fillna("").nom.map(lambda n: norm(base_nom(n))).value_counts()
+    chaines = set(noms[noms >= 3].index)
     if LIMIT: todo = todo.head(LIMIT)
     print(f"{len(todo)} lieux à affiner", flush=True)
     t0, gains, faits, stats = time.time(), {}, [], {}
@@ -103,9 +130,8 @@ def main():
             res = ask(q, cc)
             if not res: continue
             rank = int(res["place_rank"])
-            if k == "nom" and (res.get("category") not in POI or rank < 28): continue   # nom : seulement un vrai commerce/lieu
-            if rank >= 26:
-                gains[r.cle] = {"lat": res["lat"], "lon": res["lon"], "precision": "exacte" if rank >= 28 else "rue",
+            if valide(k, res, r, chaines):
+                gains[r.cle] = {"lat": res["lat"], "lon": res["lon"], "precision": "exacte" if rank >= 28 and k != "rue" else "rue",
                                 "place_rank": str(rank), "requete": q, "resultat_osm": res["display_name"][:200]}
                 stats[k] = stats.get(k, 0) + 1
                 break
