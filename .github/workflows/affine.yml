@@ -1,0 +1,37 @@
+name: Affinage des lieux à la rue
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "47 */6 * * *"   # toutes les 6 h tant qu'il reste des lieux à ré-essayer (s'arrête tout seul ensuite)
+permissions:
+  contents: write
+concurrency: geocode
+jobs:
+  affine:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install pandas requests
+      - name: Reste-t-il des lieux à affiner ?
+        id: check
+        run: |
+          left=$(python -c "import sys; sys.path.insert(0, 'scripts'); import affine; print(len(affine.a_faire()))")
+          echo "restants $left"; echo "left=$left" >> "$GITHUB_OUTPUT"
+      - name: Ré-essayer avec d'autres requêtes (Nominatim, 1 req/s)
+        if: steps.check.outputs.left != '0'
+        env: { CONTACT: "github.com/${{ github.repository }}" }
+        run: python -u scripts/affine.py
+      - name: Placer les lieux sur la carte
+        if: steps.check.outputs.left != '0'
+        run: python scripts/apply_geocode.py
+      - name: Enregistrer
+        if: steps.check.outputs.left != '0'
+        run: |
+          git config user.name "carte-bot"; git config user.email "carte-bot@users.noreply.github.com"
+          git add data/geocode.csv data/affine_fait.csv etablissements.json
+          git commit -m "Affinage : lot du $(date -u +%F\ %H:%M)" || echo "rien à enregistrer"
+          git pull --rebase -X theirs origin main
+          git push
