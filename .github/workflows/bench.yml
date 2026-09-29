@@ -1,0 +1,27 @@
+name: Échantillon témoin de l'affinage
+on:
+  push:
+    branches: [claude/lucid-cray-axlhlt]
+    paths: [.github/workflows/bench.yml]
+jobs:
+  bench:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install pandas requests
+      - name: 120 lieux au hasard
+        env: { LIMIT: "120", CONTACT: "github.com/${{ github.repository }}" }
+        run: |
+          python -c "import pandas as pd; s=pd.read_csv('data/a_geocoder.csv',dtype=str); s.sample(frac=1,random_state=7).to_csv('data/a_geocoder.csv',index=False)"
+          cp data/geocode.csv avant.csv
+          python -u scripts/affine.py
+          python - <<'PY'
+          import pandas as pd
+          a=pd.read_csv('avant.csv',dtype=str).fillna('').set_index('cle'); b=pd.read_csv('data/geocode.csv',dtype=str).fillna('').set_index('cle')
+          s=pd.read_csv('data/a_geocoder.csv',dtype=str).fillna('').set_index('cle')
+          for k in b.index[b.requete!=a.requete]:
+              r=s.loc[k]; print(f"[{b.precision[k]}] {r.nom} | {r.adresse} | {r.ville} {r.pays}\n    q={b.requete[k]}\n    -> {b.resultat_osm[k][:150]}")
+          PY
