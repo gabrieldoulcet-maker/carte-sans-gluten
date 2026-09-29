@@ -13,6 +13,7 @@ jobs:
     timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
+        with: { ref: main }   # toujours la dernière version, même si le job a attendu dans la file
       - uses: actions/setup-python@v5
         with: { python-version: "3.11" }
       - run: pip install pandas requests
@@ -26,5 +27,5 @@ jobs:
           git config user.name "carte-bot"; git config user.email "carte-bot@users.noreply.github.com"
           git add data/geocode.csv data/corrections_faites.csv data/a_verifier.csv etablissements.json
           git commit -m "Corrections : lot du $(date -u +%F\ %H:%M)" || echo "rien à enregistrer"
-          git pull --rebase -X theirs origin main
+          git pull --rebase origin main   # en cas de conflit : échec visible plutôt qu'écrasement
           git push
