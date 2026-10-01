@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0B1F24">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="GF Singapore">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>Gluten-free Singapore</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;900&family=Manrope:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+:root{--ink:#0B1F24;--deep:#0E262C;--sheet:#10282E;--card:#163238;--card2:#183A41;--line:#2A4E55;--txt:#EAF4F2;--mut:#9DB7B5;--mut2:#B8CFCC;--coral:#FF6B5B;--lime:#D7F75B;--l3:#5BE3A8;--l2:#7CC4FF;--l1:#FFC24B}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--ink);color:var(--txt);font-family:Manrope,'Helvetica Neue',system-ui,sans-serif;-webkit-tap-highlight-color:transparent;overscroll-behavior:none}
+button{font:inherit;cursor:pointer;color:inherit}
+a{color:inherit}
+.app{position:fixed;inset:0;display:flex;flex-direction:column;overflow:hidden}
+header{display:flex;align-items:center;gap:12px;padding:calc(env(safe-area-inset-top) + 12px) 18px 10px}
+.logo{width:48px;height:48px;flex-shrink:0;border-radius:16px;border:0;background:var(--coral);display:flex;align-items:center;justify-content:center;padding:0}
+.logo:active{transform:scale(.92)}
+h1{margin:0;font-family:Unbounded,'Arial Black',sans-serif;font-weight:900;font-size:21px;line-height:1.05;letter-spacing:-.02em}
+h1 span{color:var(--lime)}
+.sub{font-size:13px;color:var(--mut);font-weight:500;margin-top:2px}
+.mapwrap{position:relative;flex-shrink:0;height:46vh;min-height:260px;margin:0 12px;border-radius:28px;overflow:hidden;background:var(--deep);transition:height .4s cubic-bezier(.2,.8,.2,1)}
+.app.big .mapwrap{height:72vh}
+#map{position:absolute;inset:0;background:#0E262C}
+.leaflet-container{font-family:inherit}
+.leaflet-control-attribution{background:rgba(11,31,36,.7)!important;color:var(--mut)!important;font-size:9px!important}
+.leaflet-control-attribution a{color:var(--mut2)!important}
+.pill-label{position:absolute;left:12px;top:12px;z-index:500;display:flex;align-items:center;gap:8px;padding:8px 12px 8px 10px;border-radius:999px;background:rgba(11,31,36,.85);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);font-size:13px;font-weight:700;max-width:calc(100% - 130px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none}
+.pill-label i{width:8px;height:8px;border-radius:50%;background:var(--coral);flex-shrink:0}
+.mapbtns{position:absolute;right:10px;top:10px;z-index:500;display:flex;flex-direction:column;gap:8px}
+.mbtn{width:44px;height:44px;border-radius:50%;border:0;background:var(--txt);color:var(--ink);display:flex;align-items:center;justify-content:center;padding:0;box-shadow:0 6px 18px rgba(0,0,0,.35)}
+.mbtn.on{background:#3B82F6;color:#fff}
+.focusbar{position:absolute;left:12px;right:12px;bottom:12px;z-index:500;display:none;gap:8px}
+.focusbar.show{display:flex}
+.cta{flex-grow:1;height:48px;border-radius:16px;background:var(--coral);color:var(--ink);font-weight:800;font-size:15px;display:flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;box-shadow:0 10px 24px rgba(0,0,0,.35)}
+.cta2{height:48px;padding:0 14px;border-radius:16px;background:var(--txt);color:var(--ink);font-weight:800;font-size:14px;display:flex;align-items:center;text-decoration:none;box-shadow:0 10px 24px rgba(0,0,0,.35)}
+.lower{position:relative;flex-grow:1;min-height:0;display:flex;flex-direction:column;margin-top:12px}
+.hscroll{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding:0 12px 10px;flex-shrink:0}
+.hscroll::-webkit-scrollbar{display:none}
+.hood{height:54px;padding:0 16px;border-radius:18px;border:0;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:1px;flex-shrink:0;background:var(--card);transition:transform .15s,background .2s}
+.hood b{font-weight:800;font-size:14px;white-space:nowrap}
+.hood small{font-size:12px;opacity:.75;white-space:nowrap}
+.hood.on{background:var(--coral);color:var(--ink)}
+.hood:active,.pill:active,.lvl:active{transform:scale(.94)}
+.sheet{flex-grow:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;background:var(--sheet);border-radius:28px 28px 0 0;padding:18px 16px calc(env(safe-area-inset-bottom) + 110px);display:flex;flex-direction:column;gap:14px}
+.sheet>*{flex-shrink:0}
+.search{position:relative;display:flex;align-items:center;gap:10px;height:48px;padding:0 16px;border-radius:16px;background:var(--card2)}
+.search input{flex-grow:1;min-width:0;border:0;outline:0;background:transparent;color:var(--txt);font:inherit;font-size:16px}
+.search input::placeholder{color:var(--mut)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.pills{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;margin:0 -16px;padding:0 16px}
+.pills::-webkit-scrollbar{display:none}
+.pill{height:40px;padding:0 16px;border-radius:999px;font-weight:700;font-size:14px;white-space:nowrap;flex-shrink:0;border:2px solid var(--line);background:transparent}
+.pill.on{border-color:var(--lime);background:var(--lime);color:var(--ink)}
+.lvls{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.lvl{min-height:64px;padding:8px 4px;border-radius:16px;border:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;background:var(--card)}
+.lvl em{font-style:normal;height:24px;padding:0 8px;border-radius:8px;display:flex;align-items:center;font-size:13px;color:var(--ink)}
+.lvl span{font-size:11px;font-weight:700}
+.lvl.off{background:transparent;color:#6E8C8A;outline:2px dashed var(--line);outline-offset:-2px}
+.lvl.off em{background:var(--line)!important}
+.slot{display:none;border-radius:24px;padding:18px;background:var(--coral);color:var(--ink);flex-direction:column;gap:6px}
+.slot.show{display:flex}
+.slot small{font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase}
+.slot div{font-family:Unbounded,sans-serif;font-weight:900;font-size:24px;line-height:1.15}
+.slot.spin div{filter:blur(1.5px);opacity:.8}
+.listhead{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding-top:4px}
+.listhead h2{margin:0;font-family:Unbounded,sans-serif;font-weight:700;font-size:17px}
+.listhead span{font-size:13px;color:var(--mut);font-weight:700;white-space:nowrap}
+.card{border-radius:24px;padding:16px;display:flex;flex-direction:column;gap:12px;background:var(--card);animation:rise .45s cubic-bezier(.2,.8,.2,1) both}
+.card.focus{background:#1D4148;box-shadow:0 0 0 2px var(--coral)}
+.top{display:flex;align-items:flex-start;gap:12px}
+.badge{width:44px;height:44px;flex-shrink:0;border-radius:14px;display:flex;align-items:center;justify-content:center;color:var(--ink);font-size:14px;line-height:1}
+.badge.s3{font-size:11px}
+.name{font-weight:800;font-size:17px;line-height:1.2}
+.meta{font-size:13px;color:var(--mut);font-weight:600;margin-top:3px}
+.dist{color:var(--lime)}
+.tip{font-size:14px;line-height:1.5}
+.tags{display:flex;flex-wrap:wrap;gap:6px}
+.tag{padding:5px 10px;border-radius:999px;background:var(--card2);color:var(--mut2);font-size:12px;font-weight:700;text-decoration:none}
+.tag.warn{background:var(--l1);color:var(--ink);font-weight:800}
+.tag.book{color:var(--lime);font-weight:800}
+.tag.lnk{color:var(--txt);font-weight:800}
+.acts{display:flex;gap:8px}
+.go{flex-grow:1;height:44px;border-radius:14px;background:var(--txt);color:var(--ink);font-weight:800;font-size:14px;display:flex;align-items:center;justify-content:center;gap:8px;text-decoration:none}
+.ib{width:44px;height:44px;border-radius:14px;border:0;background:var(--card2);display:flex;align-items:center;justify-content:center;padding:0}
+.tr{height:44px;padding:0 14px;border-radius:14px;font-weight:800;font-size:14px;white-space:nowrap;border:2px solid var(--line);background:transparent}
+.tr.on{border-color:var(--lime);background:var(--lime);color:var(--ink)}
+.empty{border-radius:24px;padding:22px 20px;background:var(--card)}
+.empty b{display:block;font-family:Unbounded,sans-serif;font-size:18px;margin-bottom:8px}
+.empty p{margin:0;font-size:14px;line-height:1.5;color:var(--mut2)}
+.trophies{display:flex;flex-wrap:wrap;gap:8px}
+.trophy{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;background:var(--lime);color:var(--ink);font-weight:800;font-size:13px}
+.foot{text-align:center;font-size:12px;color:var(--mut);padding-top:10px}
+.fab{position:absolute;right:16px;bottom:calc(env(safe-area-inset-bottom) + 18px);height:60px;padding:0 22px 0 18px;border-radius:999px;border:0;background:var(--coral);color:var(--ink);display:flex;align-items:center;gap:10px;font-family:Unbounded,sans-serif;font-weight:700;font-size:15px;z-index:600;animation:glow 2.6s ease-in-out infinite}
+.toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 92px);z-index:2000;max-width:calc(100% - 40px);width:max-content;padding:14px 18px;border-radius:18px;background:var(--lime);color:var(--ink);font-weight:800;font-size:15px;text-align:center;box-shadow:0 12px 30px rgba(0,0,0,.35);animation:toast 2.8s ease both;pointer-events:none}
+.rain{position:fixed;inset:0;pointer-events:none;z-index:1500;overflow:hidden}
+.drop{position:absolute;top:0;animation:fall linear both}
+.modal{position:fixed;inset:0;z-index:1800;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(11,31,36,.72);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.modal>div{width:100%;max-width:340px;border-radius:28px;padding:26px 22px;background:var(--coral);color:var(--ink);display:flex;flex-direction:column;gap:14px;animation:rise .45s both}
+.modal small{font-size:12px;font-weight:800;letter-spacing:.14em;text-transform:uppercase}
+.modal p{margin:0;font-family:Unbounded,sans-serif;font-weight:700;font-size:20px;line-height:1.3}
+.modal button{height:48px;border-radius:16px;border:0;background:var(--ink);color:var(--txt);font-weight:800;font-size:15px}
+.shake{animation:shake .5s ease}
+.spinmap{animation:spin 1.2s cubic-bezier(.6,0,.2,1)}
+.mk{border-radius:50%;border:2px solid var(--ink);box-shadow:0 2px 6px rgba(0,0,0,.4);transition:transform .25s}
+.mk.hotel{border:3px solid #fff}
+.mk.dim{opacity:.3}
+.mk.big{transform:scale(1.6)}
+.mk.big::after{content:'';position:absolute;inset:-3px;border-radius:50%;background:inherit;animation:pulse 1.4s ease-out infinite;z-index:-1}
+.me{width:18px;height:18px;border-radius:50%;background:#3B82F6;border:3px solid #fff;box-shadow:0 0 0 6px rgba(59,130,246,.25)}
+.steam{animation:steam 1.6s ease-in-out infinite}
+@keyframes fall{0%{transform:translateY(-12vh) rotate(0);opacity:0}10%{opacity:1}100%{transform:translateY(110vh) rotate(540deg)}}
+@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-10px)}40%{transform:translateX(9px)}60%{transform:translateX(-6px)}80%{transform:translateX(4px)}}
+@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+@keyframes pulse{0%{transform:scale(1);opacity:.8}100%{transform:scale(2.6);opacity:0}}
+@keyframes toast{0%{transform:translate(-50%,24px);opacity:0}12%,88%{transform:translate(-50%,0);opacity:1}100%{transform:translate(-50%,12px);opacity:0}}
+@keyframes rise{from{transform:translateY(18px);opacity:0}to{transform:none;opacity:1}}
+@keyframes steam{0%,100%{transform:translateY(0);opacity:.5}50%{transform:translateY(-3px);opacity:1}}
+@keyframes glow{0%,100%{box-shadow:0 10px 30px rgba(255,107,91,.45)}50%{box-shadow:0 10px 44px rgba(255,107,91,.8)}}
+@media (min-width:760px){.app{max-width:480px;margin:0 auto;border-left:1px solid var(--card);border-right:1px solid var(--card)}}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+<header>
+<button class="logo" id="logo" aria-label="Logo">
+<svg width="30" height="30" viewBox="0 0 32 32" fill="none" stroke="#0B1F24" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path class="steam" d="M11 4c-1.5 2 1.5 3 0 5"/><path class="steam" style="animation-delay:.3s" d="M16 3c-1.5 2 1.5 3 0 5"/><path class="steam" style="animation-delay:.6s" d="M21 4c-1.5 2 1.5 3 0 5"/><path d="M4 14h24c0 7-5.4 12-12 12S4 21 4 14z"/><path d="M12 26l-1 3h10l-1-3"/></svg>
+</button>
+<div><h1>Gluten-free <span>Singapore</span></h1><div class="sub">Safe spots, hand-picked by Gabriel</div></div>
+</header>
+
+<div class="mapwrap" id="mapwrap">
+<div id="map"></div>
+<div class="pill-label"><i></i><span id="maplabel">Singapore</span></div>
+<div class="mapbtns">
+<button class="mbtn" id="locate" aria-label="Show where I am"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></button>
+<button class="mbtn" id="grow" aria-label="Bigger map"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+<button class="mbtn" id="reset" aria-label="Show everything"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v4h4"/></svg></button>
+</div>
+<div class="focusbar" id="focusbar">
+<a class="cta" id="fgo" target="_blank" rel="noopener"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l18-8-8 18-2-8-8-2z"/></svg><span>Live directions</span></a>
+<a class="cta2" id="fapple" target="_blank" rel="noopener">Apple Maps</a>
+</div>
+</div>
+
+<div class="lower">
+<div class="hscroll" id="hoods"></div>
+<div class="sheet" id="sheet">
+<label class="search" id="searchbox">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9DB7B5" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+<span class="sr">Search</span>
+<input id="q" type="search" placeholder="A place, a dish, a craving…" autocomplete="off">
+</label>
+<div class="pills" id="types"></div>
+<div class="lvls" id="lvls"></div>
+<div class="slot" id="slot"><small id="slotk">Spinning…</small><div id="slotn"></div></div>
+<div class="listhead"><h2 id="ltitle">All spots</h2><span id="lcount"></span></div>
+<div id="cards" style="display:flex;flex-direction:column;gap:14px"></div>
+<div class="trophies" id="trophies"></div>
+<div class="foot">Made with love. Gluten-free, obviously.</div>
+</div>
+<button class="fab" id="surprise"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="8.5" cy="8.5" r="1.2" fill="currentColor"/><circle cx="15.5" cy="15.5" r="1.2" fill="currentColor"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/></svg><span>Surprise me</span></button>
+</div>
+</div>
+
+<script>
+// Source: Gabriel's sheet "singapour_sans_gluten" (surprise experiences left out on purpose).
+const RESTOS = [{"id":"H1","nom":"Pan Pacific Singapore","type":"hotel","cuisine":"Hotel · Stay 1","adresse":"7 Raffles Blvd","postal":"039595","hood":"Marina Centre","conf":0,"status":"Stay 1","tip":"Email F&B 48 h ahead: gluten-free toast, tamari, breakfast cooked to order.","book":"48 h ahead","nsrc":1,"src":"https://www.panpacific.com/en/hotels-and-resorts/pp-marina/dining.html","lat":1.292414,"lon":103.858814,"pa":"DOWNTOWN CORE"},{"id":"H2","nom":"The Capitol Kempinski","type":"hotel","cuisine":"Hotel · Stay 2","adresse":"15 Stamford Rd","postal":"178906","hood":"City Hall","conf":0,"status":"Stay 2","tip":"Same request to F&B 48 h ahead.","book":"48 h ahead","nsrc":1,"src":"https://www.kempinski.com/en/the-capitol-singapore/restaurants-bars","lat":1.293656,"lon":103.851601,"pa":"DOWNTOWN CORE"},{"id":"A1","nom":"National Kitchen by Violet Oon","type":"asian","cuisine":"Peranakan","adresse":"1 St Andrew's Rd #02-01, National Gallery","postal":"178957","hood":"City Hall","conf":3,"status":"Open","tip":"A manager checks the order and handles cross-contact (4/5 from Celiac by the Bay).","book":"Mention coeliac when booking","nsrc":2,"src":"https://www.celiacbythebay.com/post/gluten-free-singapore","lat":1.290655,"lon":103.851708,"pa":"DOWNTOWN CORE"},{"id":"A2","nom":"Aroma's","type":"asian","cuisine":"Indian","adresse":"60 Race Course Rd","postal":"218567","hood":"Little India","conf":3,"status":"To confirm by phone (unclear Tripadvisor listing)","tip":"Owner knows coeliac inside out; rice-flour roti/naan cooked separately; several coeliac reviews in 2025.","book":"Call ahead","nsrc":1,"src":"https://www.tripadvisor.com.sg/Restaurant_Review-g294265-d3824056-Reviews-Aroma_s-Singapore.html","lat":1.308451,"lon":103.851155,"pa":"ROCHOR"},{"id":"A3","nom":"Yhingthai Palace","type":"asian","cuisine":"Thai","adresse":"36 Purvis St #01-04","postal":"188613","hood":"Bras Basah","conf":3,"status":"Open","tip":"Separate gluten-free menu; May 2026 review: staff very knowledgeable on GF.","book":"Recommended","nsrc":3,"src":"https://www.findmeglutenfree.com/biz/yhingthai-palace/6137516179324928","lat":1.296413,"lon":103.854869,"pa":"DOWNTOWN CORE"},{"id":"A4","nom":"Candlenut","type":"asian","cuisine":"Peranakan (1 Michelin star)","adresse":"17A Dempsey Rd","postal":"249676","hood":"Dempsey","conf":2,"status":"Open (Aug 2026)","tip":"May 2025 review: full ~14-dish menu made gluten-free with no fuss. Email ahead: candlenutres@comodempsey.sg.","book":"Tell them when booking","nsrc":2,"src":"https://www.tripadvisor.com/Restaurant_Review-g294265-d1809940-Reviews-Candlenut-Singapore.html","lat":1.305687,"lon":103.810193,"pa":"TANGLIN"},{"id":"A5","nom":"Yì by Jereme Leung","type":"asian","cuisine":"Chinese – gluten-free dim sum","adresse":"1 Beach Rd #03-01, Raffles Hotel","postal":"189673","hood":"City Hall","conf":2,"status":"Open","tip":"The city's only gluten-free dim sum; GF menu and separate fryers on reservation. Confirm each dish.","book":"Several days ahead","nsrc":4,"src":"https://www.findmeglutenfree.com/biz/yi-by-jereme-leung/4734931102728192","lat":1.295097,"lon":103.854068,"pa":"DOWNTOWN CORE"},{"id":"A6","nom":"Jade (The Fullerton Hotel)","type":"asian","cuisine":"Cantonese","adresse":"1 Fullerton Square","postal":"049178","hood":"Marina Bay","conf":2,"status":"Open","tip":"Dedicated gluten-free menu; a coeliac blogger says the team is “totally on it”.","book":"Ask for the GF menu","nsrc":1,"src":"https://www.coeliacbydesign.com/three-splendid-days-in-singapore-staying-at-the-fullerton-hotel/","lat":1.286193,"lon":103.85297,"pa":"DOWNTOWN CORE"},{"id":"A7","nom":"Cherry Garden by Chef Fei","type":"asian","cuisine":"Cantonese","adresse":"5 Raffles Ave, Mandarin Oriental L5","postal":"039797","hood":"Marina Centre","conf":2,"status":"Open","tip":"GF menu, 5 positive coeliac reviews. New chef: reconfirm.","book":"Recommended","nsrc":2,"src":"https://www.findmeglutenfree.com/biz/cherry-garden-restaurant/5952388225564672","lat":1.290661,"lon":103.858324,"pa":"DOWNTOWN CORE"},{"id":"A8","nom":"Bhoomi by Milind Sovani","type":"asian","cuisine":"Indian","adresse":"400 Orchard Rd, Orchard Towers","postal":"238875","hood":"Orchard","conf":2,"status":"Open","tip":"Gluten-free amaranth roti; many dishes marked GF (butter chicken, vindaloo…).","book":"Recommended","nsrc":2,"src":"https://bhoomi.sg/home-page/","lat":1.306945,"lon":103.82934,"pa":"ORCHARD"},{"id":"A9","nom":"Tiffin Room","type":"asian","cuisine":"Indian (Raffles)","adresse":"1 Beach Rd, Raffles Hotel","postal":"189673","hood":"City Hall","conf":2,"status":"Open","tip":"Menu flags dishes containing gluten; the team adapts.","book":"Recommended","nsrc":2,"src":"https://www.raffles.com/singapore/dining/tiffin-room/","lat":1.295447,"lon":103.854518,"pa":"DOWNTOWN CORE"},{"id":"A10","nom":"Hua Ting","type":"asian","cuisine":"Cantonese","adresse":"442 Orchard Rd, Orchard Hotel","postal":"238879","hood":"Orchard","conf":2,"status":"Open","tip":"The hotel's site lists gluten-free options; dim sum.","book":"Recommended","nsrc":1,"src":"https://www.millenniumhotels.com/en/destinations/asia/singapore/orchard-hotel-singapore/dining/hua-ting-restaurant/","lat":1.307669,"lon":103.828164,"pa":"ORCHARD"},{"id":"A11","nom":"Little Saigon","type":"asian","cuisine":"Vietnamese","adresse":"3E River Valley Rd #01-02","postal":"179024","hood":"Clarke Quay","conf":2,"status":"Open","tip":"Gluten-free pho, GF dishes marked on the menu, trained staff.","book":"","nsrc":1,"src":"https://www.atly.com/gluten-free/location/LittleSaigon5/","lat":1.290508,"lon":103.846416,"pa":"SINGAPORE RIVER"},{"id":"A12","nom":"Shabestan","type":"asian","cuisine":"Persian","adresse":"80 Mohamed Sultan Rd #01-13, The Pier @ Robertson","postal":"239013","hood":"Robertson Quay","conf":2,"status":"Open 12pm–10pm","tip":"Dedicated “Gluten Free” menu on the official website.","book":"","nsrc":2,"src":"https://www.shabestan.sg/","lat":1.291418,"lon":103.840553,"pa":"SINGAPORE RIVER"},{"id":"A13","nom":"Asia Grand","type":"asian","cuisine":"Cantonese","adresse":"252 North Bridge Rd #03-22B, Raffles City","postal":"179103","hood":"City Hall","conf":2,"status":"Open","tip":"Official gluten-free offer on pre-order.","book":"2 days ahead","nsrc":1,"src":"https://www.capitaland.com/sg/malls/rafflescity/en/stores/asia-grand-restaurant.html","lat":1.29376,"lon":103.852768,"pa":"DOWNTOWN CORE"},{"id":"A14","nom":"Xiao Ya Tou","type":"asian","cuisine":"Modern Chinese-Singaporean","adresse":"6 Duxton Hill","postal":"089592","hood":"Tanjong Pagar","conf":2,"status":"Open","tip":"Crispy chicken and crab fried rice adapted; understanding team.","book":"Recommended","nsrc":1,"src":"https://www.atly.com/gluten-free/location/XiaoYaTou","lat":1.279349,"lon":103.842858,"pa":"OUTRAM"},{"id":"A15","nom":"Vibez Bistro Bar","type":"asian","cuisine":"Modern Thai","adresse":"207 River Valley Rd #01-57, UE Square","postal":"238275","hood":"Robertson Quay","conf":2,"status":"Open · closed Mondays","tip":"GF dishes marked; 7/7 coeliac votes on Find Me GF.","book":"","nsrc":2,"src":"https://www.findmeglutenfree.com/biz/vibez-bistro/4746102337830912","lat":1.293105,"lon":103.841806,"pa":"SINGAPORE RIVER"},{"id":"A16","nom":"Sawasdee Thai","type":"asian","cuisine":"Thai","adresse":"6 Trengganu St","postal":"058460","hood":"Chinatown","conf":2,"status":"Open","tip":"Separate gluten-free list; 2026 review from a family with a coeliac child.","book":"","nsrc":1,"src":"https://www.findmeglutenfree.com/biz/sawasdee-thai-restaurant/4913633337933824","lat":1.283254,"lon":103.844183,"pa":"OUTRAM"},{"id":"A17","nom":"Whole Earth","type":"asian","cuisine":"Vegetarian Peranakan-Thai","adresse":"76 Peck Seah St","postal":"079331","hood":"Tanjong Pagar","conf":2,"status":"Open (Bib Gourmand)","tip":"A regular of coeliac blogger The Coeliac Table; GF marked.","book":"","nsrc":2,"src":"https://guide.michelin.com/sg/en/article/dining-out/whole-earth-singapore-bib-gourmand-feature","lat":1.277252,"lon":103.844613,"pa":"OUTRAM"},{"id":"A18","nom":"Nalan (Capitol)","type":"asian","cuisine":"Vegetarian Indian","adresse":"13 Stamford Rd #B2-54, Capitol Piazza","postal":"178905","hood":"City Hall","conf":1,"status":"Open","tip":"Right under the Kempinski. Gluten-free selection advertised; mention coeliac.","book":"","nsrc":2,"src":"https://www.happycow.net/reviews/nalan-restaurant-central-singapore-21034","lat":1.293063,"lon":103.851293,"pa":"DOWNTOWN CORE"},{"id":"A19","nom":"Mott 32","type":"asian","cuisine":"Chinese","adresse":"10 Bayfront Ave, The Shoppes MBS","postal":"018956","hood":"Marina Bay Sands","conf":1,"status":"Open","tip":"Gluten-free options, trained staff (Atly).","book":"Recommended","nsrc":1,"src":"https://www.atly.com/gluten-free/location/Mott32Singapore","lat":1.282575,"lon":103.858562,"pa":"DOWNTOWN CORE"},{"id":"A20","nom":"KOMA","type":"asian","cuisine":"Japanese","adresse":"10 Bayfront Ave B1-67, MBS","postal":"018956","hood":"Marina Bay Sands","conf":1,"status":"Open","tip":"Accommodating; ask for tamari.","book":"Recommended","nsrc":2,"src":"https://taogroup.com/venues/koma-singapore/menu/","lat":1.282925,"lon":103.859012,"pa":"DOWNTOWN CORE"},{"id":"A21","nom":"The Coconut Club","type":"asian","cuisine":"Nasi lemak (Bib Gourmand)","adresse":"269 Beach Rd","postal":"199546","hood":"Bugis","conf":1,"status":"Open","tip":"Gluten-free nasi lemak on request; ask about the sambal and the chicken coating.","book":"","nsrc":1,"src":"https://glutenfreetravelbee.com/2020/02/13/gluten-free-guide-singapore/","lat":1.300678,"lon":103.860108,"pa":"ROCHOR"},{"id":"A22","nom":"Real Food (Orchard Central)","type":"asian","cuisine":"Vegetarian","adresse":"181 Orchard Rd, Orchard Central","postal":"238896","hood":"Orchard","conf":1,"status":"Open","tip":"Tamari stir-fried vermicelli, GF toast on the menu.","book":"","nsrc":1,"src":"https://wanderlog.com/list/geoCategory/770450/best-gluten-free-restaurants-in-singapore","lat":1.300724,"lon":103.839692,"pa":"ORCHARD"},{"id":"A23","nom":"Copper Chimney","type":"asian","cuisine":"Indian","adresse":"100 Syed Alwi Rd","postal":"207676","hood":"Little India","conf":1,"status":"Open","tip":"Attentive team with a coeliac guest (2024).","book":"","nsrc":1,"src":"https://www.tripadvisor.com/Restaurant_Review-g294265-d1087910-Reviews-Copper_Chimney-Singapore.html","lat":1.309601,"lon":103.855276,"pa":"ROCHOR"},{"id":"A24","nom":"Kaveri – Changi T2","type":"asian","cuisine":"South Indian","adresse":"Changi T2, Level 3, departures","postal":"819643","hood":"Airport","conf":1,"status":"Open","tip":"For departure day (after immigration). Masala dosa, ask for a clean griddle.","book":"","nsrc":1,"src":"https://www.tripadvisor.com.sg/Restaurant_Review-g294265-d5211791-Reviews-Kaveri_Indian_Vegetarian_Restaurant_Terminal_2-Singapore.html","lat":1.355299,"lon":103.989142,"pa":"CHANGI"},{"id":"L1","nom":"Haig Road Putu Piring","type":"street","cuisine":"Steamed rice cakes","adresse":"970 Geylang Rd #01-02","postal":"423492","hood":"Geylang","conf":2,"status":"Open 11:30am–9:30pm","tip":"Original / brown coconut / durian versions are gluten-free, dedicated prep station. As seen on Netflix.","book":"","nsrc":2,"src":"https://www.haigroadputupiring.com/pages/faqs","lat":1.315748,"lon":103.897425,"pa":"GEYLANG"},{"id":"L2","nom":"Tian Tian Hainanese Chicken Rice","type":"street","cuisine":"Chicken rice","adresse":"1 Kadayanallur St #01-10, Maxwell Food Centre","postal":"069184","hood":"Chinatown","conf":1,"status":"Open","tip":"Order “no sauce”, chili is OK, bring your own tamari.","book":"","nsrc":1,"src":"https://www.findmeglutenfree.com/biz/tian-tian-hainanese-chicken-rice/6062546295586816","lat":1.28033,"lon":103.844734,"pa":"DOWNTOWN CORE"},{"id":"L3","nom":"Kuehs and Snacks","type":"street","cuisine":"Ang ku kueh","adresse":"7 Empress Rd #01-84, Empress Market","postal":"260007","hood":"Farrer Rd","conf":2,"status":"Tue, Wed, Fri–Sun 6:30am–2pm","tip":"Ang ku kueh tested gluten-free with a Nima sensor.","book":"","nsrc":1,"src":"https://internationalglutenfree.com/post/ang-ku-kueh","lat":1.316246,"lon":103.805636,"pa":"BUKIT TIMAH"},{"id":"L4","nom":"Mei Heong Yuen Dessert","type":"street","cuisine":"Snow ice","adresse":"63-67 Temple St","postal":"058611","hood":"Chinatown","conf":1,"status":"Open","tip":"Snow ice is naturally gluten-free; check the toppings.","book":"","nsrc":1,"src":"https://glutenfreetravelbee.com/2020/02/13/gluten-free-guide-singapore/","lat":1.283274,"lon":103.843187,"pa":"OUTRAM"},{"id":"L5","nom":"Legendary Bak Kut Teh","type":"street","cuisine":"Bak kut teh","adresse":"154 Rangoon Rd","postal":"218431","hood":"Farrer Park","conf":1,"status":"Open","tip":"Staff confirmed the broth is gluten-free, soy sauce served on the side.","book":"","nsrc":1,"src":"https://glutenfreetravelbee.com/2020/02/13/gluten-free-guide-singapore/","lat":1.316254,"lon":103.853442,"pa":"KALLANG"},{"id":"L6","nom":"Ah Ma QQ Bowl","type":"street","cuisine":"Taro / sweet potato desserts","adresse":"Delivery (Hougang)","postal":"","hood":"Delivery","conf":3,"status":"Active (Apr 2026)","tip":"Kitchen free of wheat, barley and rye. Delivered to the hotel. WhatsApp +65 9788 4284.","book":"Day before","nsrc":1,"src":"https://ahmaqqbowl.com/blog/gluten-free-desserts-singapore"},{"id":"G1","nom":"TIANN'S","type":"gf","cuisine":"Café / pâtisserie (kaya toast)","adresse":"71 Seng Poh Rd #01-35","postal":"160071","hood":"Tiong Bahru","conf":3,"status":"Open · closed Mondays","tip":"100% gluten-free kitchen; the city's only gluten-free kaya toast; coeliac reviews up to Sept 2026.","book":"","nsrc":5,"src":"https://tianns.com.sg/pages/about","lat":1.284247,"lon":103.832504,"pa":"BUKIT MERAH"},{"id":"G2","nom":"The Butcher's Wife","type":"gf","cuisine":"Brazilian / European","adresse":"19 Yong Siak St","postal":"168650","hood":"Tiong Bahru","conf":3,"status":"Open Tuesday evening","tip":"100% gluten-free kitchen.","book":"Book ahead","nsrc":6,"src":"https://www.thebutcherswifesg.com/","lat":1.282734,"lon":103.830115,"pa":"BUKIT MERAH"},{"id":"G3","nom":"OATBERRY","type":"gf","cuisine":"Oat café","adresse":"6 Scotts Rd, Scotts Square","postal":"228209","hood":"Orchard","conf":3,"status":"Open","tip":"Listed as dedicated gluten-free; certified GF oats.","book":"","nsrc":2,"src":"https://honeykidsasia.com/gluten-free-in-singapore/","lat":1.305856,"lon":103.832984,"pa":"ORCHARD"},{"id":"G4","nom":"Cultivate Café","type":"gf","cuisine":"Vegan","adresse":"2 Cook St, Maxwell Reserve","postal":"078857","hood":"Chinatown","conf":2,"status":"Open","tip":"Says it's 100% vegan and gluten-free. Call to confirm: +65 6978 5176.","book":"","nsrc":2,"src":"https://www.cultivatecafe.sg/","lat":1.279152,"lon":103.844367,"pa":"OUTRAM"},{"id":"G5","nom":"OMG! Decadent Donuts","type":"gf","cuisine":"Donuts","adresse":"38 Margaret Dr #01-08, Margaret Market","postal":"141038","hood":"Queenstown","conf":3,"status":"Open","tip":"100% gluten-free donuts, “certified coeliac-safe”.","book":"","nsrc":2,"src":"https://omgdonuts.sg/pages/faqs","lat":1.297736,"lon":103.80432,"pa":"QUEENSTOWN"},{"id":"G6","nom":"Some Days We Bake","type":"gf","cuisine":"Bakery","adresse":"78 Arab St #01-02","postal":"199775","hood":"Kampong Glam","conf":2,"status":"Open","tip":"Gluten-free bakery, small takeaway window.","book":"","nsrc":1,"src":"https://somedayswebake.com/","lat":1.301438,"lon":103.859219,"pa":"ROCHOR"},{"id":"G7","nom":"Ketojiak","type":"gf","cuisine":"Ice cream (local flavours)","adresse":"231 Bain St #01-75, Bras Basah Complex","postal":"180231","hood":"Bras Basah","conf":2,"status":"To confirm (2nd address: 44 Owen Rd)","tip":"Dedicated gluten-free ice-cream shop; local flavours like pulut hitam.","book":"","nsrc":1,"src":"https://www.atly.com/best/gluten-free/asian-singapore-singapore","lat":1.297013,"lon":103.853526,"pa":"DOWNTOWN CORE"},{"id":"W1","nom":"Entre-Nous Crêperie","type":"western","cuisine":"Buckwheat galettes","adresse":"27 Seah St #01-01","postal":"188383","hood":"Bugis","conf":3,"status":"Open · closed Mondays","tip":"Separate griddle; 10/10 coeliac votes. Cash/PayNow.","book":"","nsrc":3,"src":"https://www.tripadvisor.com/Restaurant_Review-g294265-d1193730-Reviews-Entre_nous_Creperie-Singapore.html","lat":1.296293,"lon":103.854676,"pa":"DOWNTOWN CORE"},{"id":"W2","nom":"LAVO","type":"western","cuisine":"Italian, rooftop","adresse":"10 Bayfront Ave, MBS Tower 1 L57","postal":"018956","hood":"Marina Bay Sands","conf":3,"status":"Open","tip":"Gluten-free pasta + dedicated fryer.","book":"Recommended","nsrc":1,"src":"https://www.findmeglutenfree.com/biz/lavo-italian-restaurant-and-rooftop-bar/5259717962235904","lat":1.283275,"lon":103.857662,"pa":"DOWNTOWN CORE"},{"id":"W3","nom":"Caffè Fernet","type":"western","cuisine":"Italian","adresse":"70 Collyer Quay #01-05, Customs House","postal":"049323","hood":"Marina Bay","conf":3,"status":"Open","tip":"Separate gluten-free menu, GF pasta.","book":"Recommended","nsrc":1,"src":"https://www.findmeglutenfree.com/biz/caffe-fernet/4956336393158656","lat":1.282509,"lon":103.853579,"pa":"DOWNTOWN CORE"},{"id":"W4","nom":"Bread Street Kitchen","type":"western","cuisine":"British","adresse":"10 Bayfront Ave #01-81, MBS","postal":"018956","hood":"Marina Bay Sands","conf":2,"status":"Open","tip":"Separate gluten-free menu, GF bread.","book":"","nsrc":2,"src":"https://www.findmeglutenfree.com/biz/bread-street-kitchen/5041080774164480","lat":1.283625,"lon":103.859912,"pa":"DOWNTOWN CORE"},{"id":"W5","nom":"Decker Barbecue","type":"western","cuisine":"Texas BBQ","adresse":"60 Robertson Quay #01-17","postal":"238252","hood":"Robertson Quay","conf":2,"status":"Open","tip":"24+ GF options, separate fryer.","book":"","nsrc":1,"src":"https://travelandglutenfree.com/2025/03/20/gluten-free-travel-guide-to-singapore/","lat":1.290089,"lon":103.839172,"pa":"SINGAPORE RIVER"},{"id":"W6","nom":"El Mero Mero","type":"western","cuisine":"Mexican","adresse":"30 Victoria St, CHIJMES","postal":"187996","hood":"City Hall","conf":2,"status":"Open","tip":"Corn tortillas, positive coeliac reviews.","book":"","nsrc":1,"src":"https://www.findmeglutenfree.com/biz/el-mero-mero/4671251244646400","lat":1.295594,"lon":103.85216,"pa":"DOWNTOWN CORE"},{"id":"W7","nom":"Kind Kones","type":"western","cuisine":"Plant-based ice cream","adresse":"290 Orchard Rd B1-15, Paragon","postal":"238859","hood":"Orchard","conf":2,"status":"Open","tip":"Dedicated gluten-free cones; clean scoop and gloves on request.","book":"","nsrc":2,"src":"https://www.celiacbythebay.com/post/gluten-free-singapore","lat":1.303711,"lon":103.835267,"pa":"ORCHARD"},{"id":"S1","nom":"CS Fresh (Cold Storage)","type":"shop","cuisine":"Supermarket","adresse":"252 North Bridge Rd #B1-01, Raffles City","postal":"179103","hood":"City Hall","conf":0,"status":"Open 8:30am–10pm","tip":"Imported gluten-free products, tamari.","book":"","nsrc":1,"src":"https://rafflescitymall.com/shop/cs-fresh-raffles-city","lat":1.29411,"lon":103.853218,"pa":"DOWNTOWN CORE"},{"id":"S2","nom":"Marks & Spencer","type":"shop","cuisine":"Food hall","adresse":"252 North Bridge Rd #B1-44E, Raffles City","postal":"179103","hood":"City Hall","conf":0,"status":"Open","tip":"British gluten-free range.","book":"","nsrc":1,"src":"https://www.littledayout.com/marks-spencer-raffles-city-food-hall/","lat":1.29446,"lon":103.851868,"pa":"DOWNTOWN CORE"}];
+
+const SECRET = '[YOUR MESSAGE FOR HER]';
+const LEVELS=[{id:3,stars:'★★★',label:'Very safe',color:'#5BE3A8'},{id:2,stars:'★★',label:'Good',color:'#7CC4FF'},{id:1,stars:'★',label:'To try',color:'#FFC24B'}];
+const TYPES=[{id:'all',label:'All'},{id:'gf',label:'100% GF'},{id:'asian',label:'Asian & local'},{id:'western',label:'Western'},{id:'street',label:'Street food & sweets'},{id:'shop',label:'Groceries'},{id:'hotel',label:'Our hotels'}];
+const LV={};LEVELS.forEach(l=>LV[l.id]=l);const TY={};TYPES.forEach(t=>TY[t.id]=t.label);
+const $=id=>document.getElementById(id);
+const esc=s=>String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const norm=s=>(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[’']/g,"'").trim();
+const isFood=r=>r.type!=='hotel'&&r.type!=='shop';
+const colorOf=r=>r.type==='hotel'?'#FF6B5B':r.type==='shop'?'#B8CFCC':LV[r.conf].color;
+const gmaps=r=>'https://www.google.com/maps/dir/?api=1&travelmode=transit&destination='+encodeURIComponent(r.nom+', '+r.adresse+', Singapore '+r.postal);
+const amaps=r=>'https://maps.apple.com/?dirflg=r&daddr='+(r.lat?r.lat+','+r.lon:encodeURIComponent(r.adresse+', Singapore'))+'&q='+encodeURIComponent(r.nom);
+function store(k,v){try{if(v===undefined)return JSON.parse(localStorage.getItem(k)||'null');localStorage.setItem(k,JSON.stringify(v))}catch(e){return null}}
+
+const S={hood:null,type:'all',lv:{1:true,2:true,3:true},q:'',focus:null,tested:store('gfsg_tested')||{},me:null,logoTaps:0,surpriseTaps:0};
+
+// ---------- Map ----------
+const map=L.map('map',{zoomControl:false,attributionControl:true,tap:true}).setView([1.295,103.845],13);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{maxZoom:20,subdomains:'abcd',attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'}).addTo(map);
+const markers={};
+RESTOS.forEach(r=>{
+  if(!r.lat)return;
+  const size=r.type==='hotel'?22:r.type==='shop'?12:16;
+  const icon=L.divIcon({className:'',iconSize:[size,size],iconAnchor:[size/2,size/2],html:'<div class="mk '+(r.type==='hotel'?'hotel':'')+'" style="width:'+size+'px;height:'+size+'px;background:'+colorOf(r)+';position:relative"></div>'});
+  const m=L.marker([r.lat,r.lon],{icon,zIndexOffset:r.type==='hotel'?1000:0,keyboard:true,title:r.nom}).addTo(map);
+  m.on('click',()=>focusOn(r.id,true));
+  markers[r.id]=m;
+});
+let meMarker=null,meCircle=null,watching=false;
+function fitTo(list,pad){const pts=list.filter(r=>r.lat).map(r=>[r.lat,r.lon]);if(!pts.length)return;if(pts.length===1){map.flyTo(pts[0],17,{duration:.8});return}map.flyToBounds(pts,{padding:[pad||40,pad||40],maxZoom:17,duration:.8})}
+function homeView(){fitTo(RESTOS.filter(r=>r.lat&&r.hood!=='Airport'&&r.hood!=='Queenstown'&&r.hood!=='Farrer Rd'),30)}
+
+// ---------- Logic ----------
+function filtered(withHood){
+  const q=norm(S.q);
+  let out=RESTOS.filter(r=>{
+    if(withHood&&S.hood&&r.hood!==S.hood)return false;
+    if(S.type!=='all'&&r.type!==S.type)return false;
+    if(r.conf&&!S.lv[r.conf])return false;
+    if(q&&norm(r.nom+' '+r.cuisine+' '+r.tip+' '+r.hood+' '+TY[r.type]).indexOf(q)<0)return false;
+    return true;
+  });
+  out.forEach(r=>r._d=S.me&&r.lat?dist(S.me,[r.lat,r.lon]):null);
+  return out.sort((a,b)=>{
+    const fa=isFood(a)?(a.lat?0:1):2,fb=isFood(b)?(b.lat?0:1):2;if(fa!==fb)return fa-fb;
+    if(S.me&&a._d!=null&&b._d!=null)return a._d-b._d;
+    return (b.conf-a.conf)||a.nom.localeCompare(b.nom);
+  });
+}
+function dist(a,b){const R=6371e3,t=Math.PI/180,dl=(b[0]-a[0])*t,dn=(b[1]-a[1])*t,x=Math.sin(dl/2)**2+Math.cos(a[0]*t)*Math.cos(b[0]*t)*Math.sin(dn/2)**2;return 2*R*Math.asin(Math.sqrt(x))}
+function fmtDist(d){if(d==null)return'';const walk=Math.round(d*1.3/80);return (d<1000?Math.round(d/10)*10+' m':(d/1000).toFixed(1)+' km')+(walk<=25?' · '+Math.max(1,walk)+' min walk':'')}
+
+function render(){
+  const vis=filtered(true),all=filtered(false);
+  const allIds={};all.forEach(r=>allIds[r.id]=1);
+  // markers
+  RESTOS.forEach(r=>{const m=markers[r.id];if(!m)return;
+    if(!allIds[r.id]){if(map.hasLayer(m))map.removeLayer(m);return}
+    if(!map.hasLayer(m))m.addTo(map);
+    const el=m.getElement()&&m.getElement().firstChild;if(!el)return;
+    el.classList.toggle('dim',!!S.hood&&r.hood!==S.hood);
+    el.classList.toggle('big',S.focus===r.id);
+  });
+  // hoods
+  const counts={};RESTOS.forEach(r=>counts[r.hood]=(counts[r.hood]||0)+1);
+  const ids=Object.keys(counts).sort((a,b)=>(counts[b]-counts[a])||a.localeCompare(b));
+  $('hoods').innerHTML='<button class="hood'+(!S.hood?' on':'')+'" data-h=""><b>Everywhere</b><small>'+RESTOS.length+' spots</small></button>'+ids.map(h=>'<button class="hood'+(S.hood===h?' on':'')+'" data-h="'+esc(h)+'"><b>'+esc(h)+'</b><small>'+counts[h]+(counts[h]>1?' spots':' spot')+'</small></button>').join('');
+  $('types').innerHTML=TYPES.map(t=>'<button class="pill'+(S.type===t.id?' on':'')+'" data-t="'+t.id+'">'+t.label+'</button>').join('');
+  $('lvls').innerHTML=LEVELS.map(l=>'<button class="lvl'+(S.lv[l.id]?'':' off')+'" data-l="'+l.id+'" aria-pressed="'+!!S.lv[l.id]+'"><em style="background:'+l.color+'">'+l.stars+'</em><span>'+l.label+'</span></button>').join('');
+  // list
+  let list=vis;const fr=S.focus&&RESTOS.find(r=>r.id===S.focus);
+  if(fr)list=[fr].concat(vis.filter(r=>r.id!==fr.id));
+  const nFood=vis.filter(isFood).length;
+  $('ltitle').textContent=S.hood||(S.me?'Nearest to you':'All spots');
+  $('lcount').textContent=nFood+(nFood>1?' places to eat':' place to eat');
+  $('maplabel').textContent=fr?fr.nom:(S.hood?S.hood+' · '+counts[S.hood]:(S.me?'You are here · tap a pin':'Singapore · tap a pin'));
+  if(!list.length){
+    const g=norm(S.q)==='gluten';
+    $('cards').innerHTML='<div class="empty"><b>'+(g?'Zero gluten found.':'Nothing here yet')+'</b><p>'+(g?'That’s exactly the point.':'Try another neighbourhood or switch a level back on.')+'</p></div>';
+  } else $('cards').innerHTML=list.map((r,i)=>card(r,i,r.id===S.focus)).join('');
+  // trophies
+  const n=Object.keys(S.tested).filter(k=>S.tested[k]).length;const tr=[];
+  if(n>=1)tr.push('First Bite');if(n>=3)tr.push('Hawker Hero');if(n>=5)tr.push('Gluten-Free Queen');
+  $('trophies').innerHTML=tr.map(t=>'<div class="trophy"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4h8v5a4 4 0 0 1-8 0V4z"/><path d="M8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M9 20h6"/></svg>'+t+'</div>').join('');
+  // focus bar
+  if(fr&&fr.lat){$('fgo').href=gmaps(fr);$('fapple').href=amaps(fr);$('focusbar').classList.add('show')}else $('focusbar').classList.remove('show');
+}
+function card(r,i,f){
+  const lv=r.conf?LV[r.conf]:null,deliv=r.hood==='Delivery',tested=!!S.tested[r.id];
+  const warn=/^to confirm/i.test(r.status);
+  const badge=r.type==='hotel'?'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-5h4v5"/></svg>':r.type==='shop'?'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h14l-1.5 9h-11z"/><path d="M9 7a3 3 0 0 1 6 0"/><circle cx="9" cy="20" r="1"/><circle cx="16" cy="20" r="1"/></svg>':lv.stars;
+  const meta=[r.cuisine,r.hood,lv?lv.label:''].filter(Boolean).map(esc).join(' · ');
+  return '<article class="card'+(f?' focus':'')+'" style="animation-delay:'+Math.min(i,8)*45+'ms">'
+   +'<div class="top"><div class="badge'+(r.conf===3?' s3':'')+'" style="background:'+colorOf(r)+'">'+badge+'</div><div style="min-width:0;flex-grow:1"><div class="name">'+esc(r.nom)+'</div><div class="meta">'+meta+(r._d!=null?' · <span class="dist">'+fmtDist(r._d)+'</span>':'')+'</div></div></div>'
+   +'<div class="tip">'+esc(r.tip)+'</div>'
+   +'<div class="tags"><span class="tag'+(warn?' warn':'')+'">'+(warn?'⚠ ':'')+esc(r.status)+'</span>'+(r.book?'<span class="tag book">Book: '+esc(r.book)+'</span>':'')
+   +(deliv?'':'<a class="tag lnk" href="'+amaps(r)+'" target="_blank" rel="noopener">Apple Maps</a>')
+   +'<a class="tag" href="'+esc(r.src)+'" target="_blank" rel="noopener">'+(r.nsrc>1?'Sources · '+r.nsrc:'Source')+'</a></div>'
+   +'<div class="acts"><a class="go" href="'+(deliv?'https://wa.me/6597884284':gmaps(r))+'" target="_blank" rel="noopener"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l18-8-8 18-2-8-8-2z"/></svg><span>'+(deliv?'Order on WhatsApp':'Directions')+'</span></a>'
+   +(r.lat?'<button class="ib" data-loc="'+r.id+'" aria-label="Show on map"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-12a7 7 0 0 1 14 0c0 5.8-7 12-7 12z"/><circle cx="12" cy="9" r="2.5"/></svg></button>':'')
+   +(isFood(r)?'<button class="tr'+(tested?' on':'')+'" data-test="'+r.id+'" aria-pressed="'+tested+'">'+(tested?'Tried it':'To try')+'</button>':'')
+   +'</div></article>';
+}
+function focusOn(id,fromMap){
+  const r=RESTOS.find(x=>x.id===id);if(!r)return;
+  S.focus=id;if(S.hood&&r.hood!==S.hood)S.hood=r.hood;
+  render();if(r.lat)map.flyTo([r.lat,r.lon],Math.max(map.getZoom(),16),{duration:.8});
+  $('sheet').scrollTo({top:0,behavior:'smooth'});
+}
+
+// ---------- Fun ----------
+let toastT;function say(msg){document.querySelectorAll('.toast').forEach(t=>t.remove());const t=document.createElement('div');t.className='toast';t.textContent=msg;document.body.appendChild(t);clearTimeout(toastT);toastT=setTimeout(()=>t.remove(),2900)}
+function rain(kind){const w=document.createElement('div');w.className='rain';
+  const heart='<svg width="100%" height="100%" viewBox="0 0 24 24" fill="#FF6B5B"><path d="M12 21s-8-5.2-8-11a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 20 10c0 5.8-8 11-8 11z"/></svg>';
+  const wheat='<svg width="100%" height="100%" viewBox="0 0 24 24" fill="none" stroke="#D7F75B" stroke-width="2" stroke-linecap="round"><path d="M12 22V8"/><path d="M12 9c-2.5 0-4-1.6-4-4 2.5 0 4 1.6 4 4zM12 9c2.5 0 4-1.6 4-4-2.5 0-4 1.6-4 4zM12 14c-2.5 0-4-1.6-4-4 2.5 0 4 1.6 4 4zM12 14c2.5 0 4-1.6 4-4-2.5 0-4 1.6-4 4z"/><path d="M3 3l18 18" stroke="#FF6B5B" stroke-width="2.6"/></svg>';
+  for(let i=0;i<26;i++){const d=document.createElement('div'),s=22+Math.random()*26;d.className='drop';d.style.cssText='left:'+Math.random()*94+'%;width:'+s+'px;height:'+s+'px;animation-duration:'+(2.2+Math.random()*1.8)+'s;animation-delay:'+Math.random()*1.4+'s';d.innerHTML=kind==='hearts'?heart:wheat;w.appendChild(d)}
+  document.body.appendChild(w);setTimeout(()=>w.remove(),5400)}
+function secret(){const m=document.createElement('div');m.className='modal';m.innerHTML='<div><small>Secret message</small><p>'+esc(SECRET)+'</p><b>Gabriel</b><button>Close</button></div>';m.querySelector('button').onclick=()=>m.remove();document.body.appendChild(m)}
+function fx(el,c,ms){el.classList.remove(c);void el.offsetWidth;el.classList.add(c);setTimeout(()=>el.classList.remove(c),ms)}
+function egg(v){const t=norm(v);
+  if(t==='gluten'){fx($('searchbox'),'shake',600);say('Forbidden word. Around here we say “the G-word”.')}
+  else if(t==='durian')say('Banned on the MRT. But Haig Road does a gluten-free durian putu piring…');
+  else if(t==='merlion'){fx($('mapwrap'),'spinmap',1300);say('The Merlion approves.')}
+  else if(['jtm',"je t'aime",'je taime','love','i love you','ily'].indexOf(t)>=0){rain('hearts');setTimeout(secret,1200)}
+  else if(['baguette','croissant','pain','bread'].indexOf(t)>=0){fx($('searchbox'),'shake',600);say('Smuggling attempt detected.')}
+  else if(t==='kaya')say('TIANN’S: the only gluten-free kaya toast in town.');
+  else if(t==='soy sauce'||t==='soja')say('Tamari, always tamari.');
+}
+
+// ---------- Events ----------
+$('hoods').onclick=e=>{const b=e.target.closest('[data-h]');if(!b)return;const h=b.dataset.h||null;S.hood=S.hood===h?null:h;S.focus=null;$('slot').classList.remove('show');render();S.hood?fitTo(RESTOS.filter(r=>r.hood===S.hood),50):homeView()};
+$('types').onclick=e=>{const b=e.target.closest('[data-t]');if(!b)return;S.type=b.dataset.t;S.focus=null;render()};
+$('lvls').onclick=e=>{const b=e.target.closest('[data-l]');if(!b)return;S.lv[b.dataset.l]=!S.lv[b.dataset.l];S.focus=null;render()};
+$('cards').onclick=e=>{
+  const l=e.target.closest('[data-loc]');if(l){focusOn(l.dataset.loc);return}
+  const t=e.target.closest('[data-test]');if(t){const id=t.dataset.test;S.tested[id]=!S.tested[id];store('gfsg_tested',S.tested);render();
+    const n=Object.keys(S.tested).filter(k=>S.tested[k]).length;
+    if(S.tested[id]){if(n===1)say('Trophy: First Bite.');else if(n===3){say('Trophy: Hawker Hero.');rain('wheat')}else if(n===5){say('Trophy: Gluten-Free Queen.');rain('hearts')}}}
+};
+$('q').oninput=e=>{S.q=e.target.value;S.focus=null;render();egg(S.q)};
+$('logo').onclick=()=>{S.logoTaps++;if(S.logoTaps>=5){S.logoTaps=0;rain('wheat');say('100% gluten-free zone. Promise.')}};
+$('reset').onclick=()=>{S.hood=null;S.focus=null;$('slot').classList.remove('show');render();homeView()};
+$('grow').onclick=()=>{$('app').classList.toggle('big');setTimeout(()=>map.invalidateSize(),420)};
+$('locate').onclick=()=>{
+  if(!navigator.geolocation){say('Location isn’t available on this device.');return}
+  if(watching&&S.me){map.flyTo(S.me,16,{duration:.8});return}
+  say('Finding you…');
+  navigator.geolocation.watchPosition(p=>{
+    const first=!S.me;S.me=[p.coords.latitude,p.coords.longitude];watching=true;$('locate').classList.add('on');
+    if(!meMarker){meMarker=L.marker(S.me,{icon:L.divIcon({className:'',iconSize:[18,18],iconAnchor:[9,9],html:'<div class="me"></div>'}),zIndexOffset:2000}).addTo(map);meCircle=L.circle(S.me,{radius:p.coords.accuracy,color:'#3B82F6',weight:1,fillOpacity:.08}).addTo(map)}
+    else{meMarker.setLatLng(S.me);meCircle.setLatLng(S.me).setRadius(p.coords.accuracy)}
+    if(first){render();map.flyTo(S.me,15,{duration:.8});const far=dist(S.me,[1.29,103.85])>40000;if(far)say('You’re not in Singapore yet. Distances will make sense once you land.')}
+    else render();
+  },err=>{say(err.code===1?'Location blocked. Allow it in Settings › Safari › Location.':'Couldn’t find you right now.')},{enableHighAccuracy:true,maximumAge:15000,timeout:20000});
+};
+let slotTimer;
+$('surprise').onclick=()=>{
+  const pool=filtered(true).filter(isFood);S.surpriseTaps++;
+  if(!pool.length){say('Nothing with these filters. Loosen them a bit?');return}
+  clearInterval(slotTimer);let n=0;const total=16+Math.floor(Math.random()*6);
+  $('slot').classList.add('show','spin');$('slotk').textContent='Spinning…';$('sheet').scrollTo({top:0,behavior:'smooth'});
+  slotTimer=setInterval(()=>{n++;const p=pool[Math.floor(Math.random()*pool.length)];$('slotn').textContent=p.nom;
+    if(n>=total){clearInterval(slotTimer);$('slot').classList.remove('spin');$('slotk').textContent='Fate has chosen';focusOn(p.id);if(S.surpriseTaps===7)say('7 spins… someone’s really hungry.')}},60);
+};
+
+render();homeView();
+</script>
+</body>
+</html>
